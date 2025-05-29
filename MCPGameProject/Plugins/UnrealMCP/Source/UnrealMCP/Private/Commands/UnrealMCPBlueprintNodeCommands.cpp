@@ -921,4 +921,97 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleFindBlueprintNode
     ResultObj->SetArrayField(TEXT("node_guids"), NodeGuidArray);
     
     return ResultObj;
+}
+
+TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddFunctionCallNode(
+    const TSharedPtr<FJsonObject>& Params)
+{
+    // Get required parameters
+    FString BlueprintName;
+    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
+    }
+
+    FString GraphName;
+    if (!Params->TryGetStringField(TEXT("function_or_graph_name"), GraphName))
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
+    }
+
+    // Get position parameters (optional)
+    FVector2D NodePosition(0.0f, 0.0f);
+    if (Params->HasField(TEXT("node_position")))
+    {
+        NodePosition = FUnrealMCPCommonUtils::GetVector2DFromJson(Params, TEXT("node_position"));
+    }
+
+    // Check for target parameter (optional)
+    FString TargetClassName;
+    Params->TryGetStringField(TEXT("target_class"), TargetClassName);
+    FString TargetFunctionName;
+    Params->TryGetStringField(TEXT("target_function"), TargetFunctionName);
+
+    // Find the blueprint
+    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
+    if (!Blueprint)
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
+    }
+    // Get the event graph
+    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
+    if (!EventGraph)
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
+    }
+
+    // Try to find the target class
+    UClass* TargetClass = nullptr;
+        
+    // First try without a prefix
+    TargetClass = FindObject<UClass>(ANY_PACKAGE, *TargetClassName);
+    UE_LOG(LogTemp, Display, TEXT("Tried to find class '%s': %s"), 
+           *TargetClassName, TargetClass ? TEXT("Found") : TEXT("Not found"));
+        
+    // If not found, try with U prefix (common convention for UE classes)
+    if (!TargetClass && !TargetClassName.StartsWith(TEXT("U")))
+    {
+        FString TargetWithPrefix = FString(TEXT("U")) + TargetClassName;
+        TargetClass = FindObject<UClass>(ANY_PACKAGE, *TargetWithPrefix);
+        UE_LOG(LogTemp, Display, TEXT("Tried to find class '%s': %s"), 
+               *TargetWithPrefix, TargetClass ? TEXT("Found") : TEXT("Not found"));
+    }
+    if (!TargetClass)
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Failed to find target class %s"), *TargetClassName));
+    }
+
+    UEdGraphNode* FunctionNode = nullptr;
+    FUnrealMCPCommonUtils::SpawnFunctionCallNode(EventGraph, FName(TargetFunctionName), TargetClass, true, FVector2D(), FunctionNode);
+    if (FunctionNode != nullptr)
+    {
+        // Set the position of the node
+        FunctionNode->NodePosX = NodePosition.X;
+        FunctionNode->NodePosY = NodePosition.Y;
+        
+        // Add the node to the graph
+        EventGraph->AddNode(FunctionNode, true);
+        FunctionNode->CreateNewGuid();
+        FunctionNode->PostPlacedNewNode();
+        FunctionNode->AllocateDefaultPins();
+        
+        UE_LOG(LogTemp, Display, TEXT("Created function call node for %s in graph %s at position (%f, %f)"), 
+               *TargetFunctionName, *EventGraph->GetName(), NodePosition.X, NodePosition.Y);
+        
+        // Mark the blueprint as modified
+        FBlueprintEditorUtils::MarkBlueprintAsModified(Blueprint);
+        
+        TSharedPtr<FJsonObject> ResultObj = MakeShared<FJsonObject>();
+        ResultObj->SetStringField(TEXT("node_id"), FunctionNode->NodeGuid.ToString());
+        return ResultObj;
+    }
+    else
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Failed to create function call node for %s"), *TargetFunctionName));
+    }
 } 

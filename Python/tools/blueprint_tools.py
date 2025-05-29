@@ -330,6 +330,59 @@ def register_blueprint_tools(mcp: FastMCP):
             logger.error(error_msg)
             return {"success": False, "message": error_msg}
 
+    @mcp.tool()
+    def add_blueprint_function(
+        ctx: Context,
+        blueprint_name: str,
+        function_name: str,
+        in_params: Dict[str, Any] = {},
+        out_params: Dict[str, Any] = {},
+    ) -> Dict[str, Any]:
+        """
+        Add a function to a Blueprint class.
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_name: Name of the function to add
+            in_params: Dictionary of input parameter names and types for the function
+            out_params: Dictionary of output parameter names and types for the function
+
+            in_params and out_params should be lists of dictionaries with parameter details
+            in the format eg. [{"name": "param_name", "type": "Integer", "pin_type": "Single"}]
+            parameter types can be "Integer", "Float", "String", "Boolean", etc. those types can be used in blueprint variables in Unreal Engine.
+            pin_type can be "Single" for single values or "Array" for arrays, and "Map" for maps, "Set" for sets.
+        
+        Returns:
+            Response indicating success or failure with detailed results for each property
+        """
+        from unreal_mcp_server import get_unreal_connection
+        try:
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            params = {
+                "blueprint_name": blueprint_name,
+                "function_name": function_name,
+                "in_params": in_params,
+                "out_params": out_params
+            }
+            
+            logger.info(f"Adding function to blueprint with params: {params}")
+            response = unreal.send_command("add_blueprint_function", params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Add blueprint function response: {response}")
+            return response
+        except Exception as e:
+            error_msg = f"Error adding blueprint function: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+        
+
     # @mcp.tool() commented out, just use set_component_property instead
     def set_pawn_properties(
         ctx: Context,

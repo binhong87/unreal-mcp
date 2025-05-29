@@ -17,6 +17,186 @@ class UK2Node_InputAction;
 class UK2Node_Self;
 class UFunction;
 
+	
+enum EVariablePinType
+{
+	Single,
+	Array,
+	Set,
+	Map
+};
+
+enum EVariableType
+{
+	VarType_Boolean,
+	VarType_Byte,
+	VarType_Integer,
+	VarType_Integer64,
+	VarType_Float,
+	VarType_Name,
+	VarType_String,
+	VarType_Text,
+	VarType_Vector,
+	VarType_Rotator,
+	VarType_Transform,
+	VarType_Object,
+	VarType_Texture2D,
+	VarType_Color,
+	VarType_Actor,
+	VarType_Vector2D,
+	VarType_LinearColor,
+	VarType_SlateColor,
+	VarType_IntPoint,
+	VarType_DateTime,
+	VarType_Timespan,    
+	VarType_IntVector,
+	VarType_IntVector4,
+	VarType_SaveGame,
+};
+
+enum EPinDirection
+{
+	In,
+	Out,
+};
+
+enum EK2NodeType
+{
+	K2NodeType_If,                        
+	K2NodeType_For,
+	K2NodeType_Foreach,
+	K2NodeType_While,
+	K2NodeType_Do,
+	K2NodeType_SwitchString,
+	K2NodeType_SwitchInt,
+	K2NodeType_SwitchEnum,
+};
+
+enum EVariableScopeType
+{
+	Global,
+	Local
+};
+
+enum EVariableOperateType
+{
+	GetValue,
+	SetValue
+};
+
+enum EArithmeticOperation
+{
+	Add,
+	Subtract,
+	Multiply,
+	Divide
+};
+
+enum EArithmeticDataType               
+{
+	ArithType_Integer,
+	ArithType_Float,
+	ArithType_Byte,
+	ArithType_Vector,
+	ArithType_Vector2D,
+	ArithType_IntPoint,
+	ArithType_Rotator,
+	ArithType_Quat,
+	ArithType_Transform,
+	ArithType_LinearColor,
+	ArithType_DateTime,
+	ArithType_Timespan,
+	ArithType_Plane,
+	ArithType_IntVector,
+	ArithType_Integer64,
+	ArithType_Vector4,
+};
+
+struct FAllInputAndOutputVariable          
+{
+	FString Name = FString();
+	FString Type = FString();
+	EVariablePinType VarType = EVariablePinType::Single;
+};
+struct FCodeSection
+{
+	FString Type = FString();
+	FString Content = FString();
+};
+struct FEnumInfo
+{
+	FString Name;
+	TArray<FString> Members;
+	TArray<FString> UMetas;            
+	FString UEnumDeclaration;        
+};
+struct FStructInfo
+{
+	FString Name;
+	TArray<FString> Members;
+	TArray<FString> UProperties;                 
+	FString UStructDeclaration;              
+};
+struct FGlobalAddtitionalEnum            
+{
+	FString InCodeName;          
+	FString RealName;        
+	FString AssetPath;        
+	TArray<FString> Members;      
+};
+struct FGlobalAdditionalStruct            
+{
+	FString InCodeName;          
+	FString RealName;        
+	FString AssetPath;        
+	TArray<FString> Members;          
+};
+struct FKB_FunctionPinInformations   
+{
+	FName Name = FName();
+	TEnumAsByte<EVariableType> Type = EVariableType::VarType_Boolean;
+	TEnumAsByte<EVariablePinType> VarType = EVariablePinType::Single;
+	bool UseCustomVarType = false;
+	FString CustomVarTypeName = FString();
+	FString CustomVarTypePath = FString();
+};
+
+struct FKB_PinTypeInformations   
+{
+	int Index = 0;
+	FName Name = FName();
+	FName Category = FName();
+	FName SubCategory = FName();
+	FString SubCategoryObject = FString();
+	EPinDirection PinDirection = EPinDirection::In;  
+	bool IsHidden = false;
+};
+
+struct FKB_TempVarsUntilNow       
+{
+	TArray<FString> TempVarNames = {};
+	TArray<FKB_PinTypeInformations> TempVarPins = {};
+	TArray<FString> TempVarTypes = {};
+};
+
+struct FKB_SGlobalWhileSections
+{
+	TArray<FString> GlobalCodes = {};
+};
+
+struct FCustomEnumOperandInfo
+{
+	bool bIsCustomEnum = false;
+	UEnum* EnumAsset = nullptr;
+	FString EnumAssetPath;
+	FString EnumInCodeName;   
+	FString EnumValueIfLiteral;        
+	bool bIsLiteral = false;
+	FString OriginalOperandString;
+
+	FCustomEnumOperandInfo() {}
+};
+
 /**
  * Common utilities for UnrealMCP commands
  */
@@ -40,6 +220,7 @@ public:
     static UBlueprint* FindBlueprint(const FString& BlueprintName);
     static UBlueprint* FindBlueprintByName(const FString& BlueprintName);
     static UEdGraph* FindOrCreateEventGraph(UBlueprint* Blueprint);
+	static UEdGraph* FindBlueprintGraphByName(UBlueprint* Blueprint, const FString& GraphName);
     
     // Blueprint node utilities
     static UK2Node_Event* CreateEventNode(UEdGraph* Graph, const FString& EventName, const FVector2D& Position);
@@ -54,6 +235,33 @@ public:
     static UK2Node_Event* FindExistingEventNode(UEdGraph* Graph, const FString& EventName);
 
     // Property utilities
-    static bool SetObjectProperty(UObject* Object, const FString& PropertyName, 
-                                 const TSharedPtr<FJsonValue>& Value, FString& OutErrorMessage);
-}; 
+    static bool SetObjectProperty(UObject* Object, const FString& PropertyName, const TSharedPtr<FJsonValue>& Value, FString& OutErrorMessage);
+
+
+	static bool SpawnFunctionCallNode(UEdGraph* LocalGraph, FName NameOfFunction, UClass* ClassOfFunction, bool AutoFindPosition, FVector2D LocationOfFunction, UEdGraphNode*& NewNode);
+
+	static bool SpawnMathNode(UEdGraph* LocalGraph, EArithmeticOperation Operation, EArithmeticDataType DataType, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode);
+
+	static bool SpawnSequenceNode(UEdGraph* LocalGraph, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode);
+
+	static bool SpawnNodeByType(UEdGraph* LocalGraph, EK2NodeType NodeType, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode);
+
+	static bool SpawnSelectNode(UEdGraph* LocalGraph, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode);
+
+	static bool SpawnSelectNode2(UEdGraph* LocalGraph, bool AutoFindPosition, FVector2D LocationOfNode, FKB_PinTypeInformations PinTypeInfo, UEdGraphNode*& NewNode);
+
+	static bool SpawnEnumSwitch(UEdGraph* LocalGraph, FString EnumPath, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode);
+
+	static bool SpawnStructNode(UEdGraph* LocalGraph, UScriptStruct* StructType, bool bMakeStruct, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode);
+	
+	static bool CreateBlueprintFunction(UBlueprint* BlueprintRef, FString FunctionName, TArray<FKB_FunctionPinInformations> InPins, TArray<FKB_FunctionPinInformations> OutPins,  UEdGraph*& FunctionGraph);
+
+	static bool SafeFindUniqueKismetName(UBlueprint* InBlueprint, const FString& InBaseName, FName& ReturnName);
+
+	static void PinVarConversionLocal(EVariableType VarType, FName& PinCategory, FName& PinSubCategory, TWeakObjectPtr<UObject>& PinSubObject);
+
+	static TEnumAsByte<EVariableType> GetVariableTypeFromString(const FString& TypeString);
+
+	static TEnumAsByte<EVariablePinType> GetVariablePinTypeFromString(const FString& TypeString);
+
+};

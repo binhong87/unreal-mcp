@@ -23,8 +23,23 @@
 #include "Engine/BlueprintGeneratedClass.h"
 #include "BlueprintNodeSpawner.h"
 #include "BlueprintActionDatabase.h"
+#include "BlueprintFunctionNodeSpawner.h"
+#include "K2Node_BreakStruct.h"
+#include "K2Node_ExecutionSequence.h"
+#include "K2Node_FunctionEntry.h"
+#include "K2Node_FunctionResult.h"
+#include "K2Node_IfThenElse.h"
+#include "K2Node_MakeStruct.h"
+#include "K2Node_Select.h"
+#include "K2Node_SwitchEnum.h"
+#include "K2Node_SwitchString.h"
 #include "Dom/JsonObject.h"
 #include "Dom/JsonValue.h"
+#include "GameFramework/SaveGame.h"
+#include "Kismet/KismetMathLibrary.h"
+
+
+#define LOCTEXT_NAMESPACE "FUnrealMCPModule"
 
 // JSON Utilities
 TSharedPtr<FJsonObject> FUnrealMCPCommonUtils::CreateErrorResponse(const FString& Message)
@@ -177,6 +192,24 @@ UEdGraph* FUnrealMCPCommonUtils::FindOrCreateEventGraph(UBlueprint* Blueprint)
     UEdGraph* NewGraph = FBlueprintEditorUtils::CreateNewGraph(Blueprint, FName(TEXT("EventGraph")), UEdGraph::StaticClass(), UEdGraphSchema_K2::StaticClass());
     FBlueprintEditorUtils::AddUbergraphPage(Blueprint, NewGraph);
     return NewGraph;
+}
+
+UEdGraph* FUnrealMCPCommonUtils::FindBlueprintGraphByName(UBlueprint* Blueprint, const FString& GraphName)
+{
+    if (!Blueprint)
+    {
+        return nullptr;
+    }    
+    TArray<UEdGraph*> AllGraphs;
+    Blueprint->GetAllGraphs(AllGraphs);
+    for (UEdGraph* Graph : AllGraphs)
+    {
+        if (Graph->GetName() == GraphName)
+        {
+            return Graph;
+        }
+    }
+    return nullptr;
 }
 
 // Blueprint node utilities
@@ -706,4 +739,915 @@ bool FUnrealMCPCommonUtils::SetObjectProperty(UObject* Object, const FString& Pr
     OutErrorMessage = FString::Printf(TEXT("Unsupported property type: %s for property %s"), 
                                     *Property->GetClass()->GetName(), *PropertyName);
     return false;
-} 
+}
+
+
+bool FUnrealMCPCommonUtils::SpawnFunctionCallNode(UEdGraph* LocalGraph, FName NameOfFunction, UClass* ClassOfFunction, bool AutoFindPosition, FVector2D LocationOfFunction, UEdGraphNode*& NewNode)
+{
+    if (!ClassOfFunction)
+        return false;
+    if (!LocalGraph)
+        return false;
+    FVector2D MyPosition = LocationOfFunction;
+    if (AutoFindPosition)
+        MyPosition = LocalGraph->GetGoodPlaceForNewNode();
+
+    UFunction* Function = ClassOfFunction->FindFunctionByName(NameOfFunction);
+    if (!Function)
+        return false;
+    NewNode = NewObject<UEdGraphNode>(LocalGraph);
+    UBlueprintFunctionNodeSpawner* FunctionNodeSpawner = UBlueprintFunctionNodeSpawner::Create(Function);
+    if (FunctionNodeSpawner)
+    {
+        FunctionNodeSpawner->SetFlags(RF_Transactional);
+        NewNode = FunctionNodeSpawner->Invoke(LocalGraph, IBlueprintNodeBinder::FBindingSet(), FVector2D(MyPosition.X, MyPosition.Y));
+        // NodeIndex = NodeList.Add(NewNode);
+    }
+    return true;
+}
+
+bool FUnrealMCPCommonUtils::SpawnMathNode(UEdGraph* LocalGraph, EArithmeticOperation Operation, EArithmeticDataType DataType, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode)
+{
+    UEdGraph* Graph = LocalGraph;
+    if (!Graph)
+        return false;
+
+    const UEdGraphSchema_K2* Schema = Cast<const UEdGraphSchema_K2>(Graph->GetSchema());
+    if (!Schema)
+        return false;
+
+    FVector2D NodePosition = LocationOfNode;
+    if (AutoFindPosition)
+        NodePosition = Graph->GetGoodPlaceForNewNode();
+
+    FName FunctionName;
+    bool bIsValidOperation = true;
+
+    switch (Operation)
+    {
+    case EArithmeticOperation::Add:
+        switch (DataType)
+        {
+        case EArithmeticDataType::ArithType_Integer:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Add_IntInt);
+            break;
+        case EArithmeticDataType::ArithType_Float:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Add_DoubleDouble);
+            break;
+        case EArithmeticDataType::ArithType_Byte:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Add_ByteByte);
+            break;
+        case EArithmeticDataType::ArithType_Integer64:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Add_Int64Int64);
+            break;
+        case EArithmeticDataType::ArithType_Vector:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Add_VectorVector);
+            break;
+        case EArithmeticDataType::ArithType_Vector2D:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Add_Vector2DVector2D);
+            break;
+        case EArithmeticDataType::ArithType_Vector4:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Add_Vector4Vector4);
+            break;
+        default:
+            bIsValidOperation = false;
+        }
+        break;
+    case EArithmeticOperation::Subtract:
+        switch (DataType)
+        {
+        case EArithmeticDataType::ArithType_Integer:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Subtract_IntInt);
+            break;
+        case EArithmeticDataType::ArithType_Float:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Subtract_DoubleDouble);
+            break;
+        case EArithmeticDataType::ArithType_Byte:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Subtract_ByteByte);
+            break;
+        case EArithmeticDataType::ArithType_Integer64:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Subtract_Int64Int64);
+            break;
+        case EArithmeticDataType::ArithType_Vector:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Subtract_VectorVector);
+            break;
+        case EArithmeticDataType::ArithType_Vector2D:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Subtract_Vector2DVector2D);
+            break;
+        case EArithmeticDataType::ArithType_Vector4:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Subtract_Vector4Vector4);
+            break;
+        default:
+            bIsValidOperation = false;
+        }
+        break;
+    case EArithmeticOperation::Multiply:
+        switch (DataType)
+        {
+        case EArithmeticDataType::ArithType_Integer:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Multiply_IntInt);
+            break;
+        case EArithmeticDataType::ArithType_Float:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Multiply_DoubleDouble);
+            break;
+        case EArithmeticDataType::ArithType_Byte:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Multiply_ByteByte);
+            break;
+        case EArithmeticDataType::ArithType_Integer64:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Multiply_Int64Int64);
+            break;
+        case EArithmeticDataType::ArithType_Vector:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Multiply_VectorVector);
+            break;
+        case EArithmeticDataType::ArithType_Vector2D:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Multiply_Vector2DVector2D);
+            break;
+        case EArithmeticDataType::ArithType_Vector4:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Multiply_Vector4Vector4);
+            break;
+        default:
+            bIsValidOperation = false;
+        }
+        break;
+    case EArithmeticOperation::Divide:
+        switch (DataType)
+        {
+        case EArithmeticDataType::ArithType_Integer:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Divide_IntInt);
+            break;
+        case EArithmeticDataType::ArithType_Float:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Divide_DoubleDouble);
+            break;
+        case EArithmeticDataType::ArithType_Byte:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Divide_ByteByte);
+            break;
+        case EArithmeticDataType::ArithType_Integer64:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Divide_Int64Int64);
+            break;
+        case EArithmeticDataType::ArithType_Vector:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Divide_VectorVector);
+            break;
+        case EArithmeticDataType::ArithType_Vector2D:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Divide_Vector2DVector2D);
+            break;
+        case EArithmeticDataType::ArithType_Vector4:
+            FunctionName = GET_FUNCTION_NAME_CHECKED(UKismetMathLibrary, Divide_Vector4Vector4);
+            break;
+        default:
+            bIsValidOperation = false;
+        }
+        break;
+    default:
+        bIsValidOperation = false;
+    }
+
+    if (!bIsValidOperation)
+        return false;
+
+    UK2Node_CallFunction* FunctionNode = NewObject<UK2Node_CallFunction>(Graph);
+    if (FunctionNode)
+    {
+        FunctionNode->CreateNewGuid();
+        FunctionNode->PostPlacedNewNode();
+        FunctionNode->SetFromFunction(UKismetMathLibrary::StaticClass()->FindFunctionByName(FunctionName));
+        FunctionNode->SetFlags(RF_Transactional);
+        FunctionNode->AllocateDefaultPins();
+
+        Graph->AddNode(FunctionNode, true, false);
+        FunctionNode->NodePosX = NodePosition.X;
+        FunctionNode->NodePosY = NodePosition.Y;
+        FunctionNode->SnapToGrid(16);
+
+        // NodeIndex = NodeList.Add(FunctionNode);
+        NewNode = FunctionNode;
+        return true;
+    }
+
+    return false;
+}
+
+bool FUnrealMCPCommonUtils::SpawnSequenceNode(UEdGraph* LocalGraph, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode)
+{
+    if (!LocalGraph)
+        return false;
+
+    FVector2D NodePosition = LocationOfNode;
+    if (AutoFindPosition)
+        NodePosition = LocalGraph->GetGoodPlaceForNewNode();
+
+    UK2Node_ExecutionSequence* NewSequenceNode = NewObject<UK2Node_ExecutionSequence>(LocalGraph);
+    if (!NewSequenceNode)
+        return false;
+
+    NewSequenceNode->SetFlags(RF_Transactional);
+
+    LocalGraph->AddNode(NewSequenceNode, true, false);
+    NewSequenceNode->CreateNewGuid();
+    NewSequenceNode->PostPlacedNewNode();
+    NewSequenceNode->AllocateDefaultPins();
+    NewSequenceNode->NodePosX = NodePosition.X;
+    NewSequenceNode->NodePosY = NodePosition.Y;
+
+    NewNode = NewSequenceNode;
+    // NodeIndex = NodeList.Add(NewSequenceNode);
+
+    return true;
+}
+
+bool FUnrealMCPCommonUtils::SpawnNodeByType(UEdGraph* LocalGraph, EK2NodeType NodeType, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode)
+{
+    if (!LocalGraph)
+        return false;
+    FVector2D NodePosition = LocationOfNode;
+    if (AutoFindPosition)
+        NodePosition = LocalGraph->GetGoodPlaceForNewNode();
+    UK2Node_IfThenElse* NewBranchNode = nullptr;
+    switch (NodeType) {
+    case EK2NodeType::K2NodeType_If:
+        NewBranchNode = NewObject<UK2Node_IfThenElse>(LocalGraph);
+        if (!NewBranchNode)
+            return false;
+        NewBranchNode->SetFlags(RF_Transactional);
+        LocalGraph->AddNode(NewBranchNode, true, false);
+        NewBranchNode->CreateNewGuid();
+        NewBranchNode->PostPlacedNewNode();
+        NewBranchNode->AllocateDefaultPins();
+        NewBranchNode->NodePosX = NodePosition.X;
+        NewBranchNode->NodePosY = NodePosition.Y;
+        NewNode = NewBranchNode;
+        // NodeIndex = NodeList.Add(NewBranchNode);
+        break;
+    case EK2NodeType::K2NodeType_For:
+        return false;
+        break;
+    case EK2NodeType::K2NodeType_Foreach:
+        return false;
+        break;
+    case EK2NodeType::K2NodeType_While:
+        return false;
+        break;
+    case EK2NodeType::K2NodeType_Do:
+        return false;
+        break;
+    case EK2NodeType::K2NodeType_SwitchString:
+        UK2Node_SwitchString* NewSwitchStringNode = NewObject<UK2Node_SwitchString>(LocalGraph);
+        if (!NewSwitchStringNode)
+            return false;
+        NewSwitchStringNode->SetFlags(RF_Transactional);
+        LocalGraph->AddNode(NewSwitchStringNode, true, false);
+        NewSwitchStringNode->CreateNewGuid();
+        NewSwitchStringNode->PostPlacedNewNode();
+        NewSwitchStringNode->AllocateDefaultPins();
+        NewSwitchStringNode->NodePosX = NodePosition.X;
+        NewSwitchStringNode->NodePosY = NodePosition.Y;
+        NewNode = NewSwitchStringNode;
+        // NodeIndex = NodeList.Add(NewSwitchStringNode);
+        break;
+    }
+    return true;
+}
+
+bool FUnrealMCPCommonUtils::SpawnSelectNode(UEdGraph* LocalGraph, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode)
+{
+    if (!LocalGraph)
+        return false;
+
+    FVector2D NodePosition = LocationOfNode;
+    if (AutoFindPosition)
+        NodePosition = LocalGraph->GetGoodPlaceForNewNode();
+
+    UK2Node_Select* SelectNode = NewObject<UK2Node_Select>(LocalGraph);
+    if (!SelectNode)
+        return false;
+
+    SelectNode->SetFlags(RF_Transactional);
+    LocalGraph->AddNode(SelectNode, true, false);
+    SelectNode->CreateNewGuid();
+    SelectNode->PostPlacedNewNode();
+    SelectNode->AllocateDefaultPins();
+
+    SelectNode->NodePosX = NodePosition.X;
+    SelectNode->NodePosY = NodePosition.Y;
+
+    UEdGraphPin* IndexPin = SelectNode->GetIndexPin();
+    if (IndexPin)
+    {
+        IndexPin->PinType.PinCategory = UEdGraphSchema_K2::PC_Boolean;
+        IndexPin->PinType.PinSubCategory = NAME_None;
+        IndexPin->PinType.PinSubCategoryObject = nullptr;
+
+        SelectNode->PinTypeChanged(IndexPin);
+    }
+    NewNode = SelectNode;
+    
+    // NodeIndex = NodeList.Add(SelectNode);
+    return true;
+}
+
+bool FUnrealMCPCommonUtils::SpawnSelectNode2(UEdGraph* LocalGraph, bool AutoFindPosition, FVector2D LocationOfNode, FKB_PinTypeInformations PinTypeInfo, UEdGraphNode*& NewNode)
+{
+    if (!LocalGraph)
+        return false;
+
+    if (!SpawnSelectNode(LocalGraph, AutoFindPosition, LocationOfNode, NewNode))
+    {
+        return false;
+    }
+
+    UK2Node_Select* SelectNode = Cast<UK2Node_Select>(NewNode);
+    if (!SelectNode)
+    {
+        return false;
+    }
+
+    UEdGraphPin* ReturnPin = SelectNode->GetReturnValuePin();
+    if (!ReturnPin)
+    {
+        return false;
+    }
+
+    ReturnPin->PinType.PinCategory = PinTypeInfo.Category;
+    ReturnPin->PinType.PinSubCategory = PinTypeInfo.SubCategory;
+    // CallOnDebug(FString::Printf(TEXT("lidkhjoiwduiowadjioawd %s"), *PinTypeInfo.SubCategory.ToString()));
+
+    // TODO
+    // if (PinList.IsValidIndex(PinTypeInfo.Index))
+    // {
+    //     UEdGraphPin* SourcePin = PinList[PinTypeInfo.Index];
+    //     if (SourcePin && SourcePin->PinType.PinSubCategoryObject.IsValid())
+    //     {
+    //         ReturnPin->PinType.PinSubCategoryObject = SourcePin->PinType.PinSubCategoryObject;
+    //     }
+    // }
+
+    SelectNode->PinTypeChanged(ReturnPin);
+
+    return true;
+}
+
+bool FUnrealMCPCommonUtils::SpawnEnumSwitch(UEdGraph* LocalGraph, FString EnumPath, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode)
+{
+    if (!LocalGraph)
+        return false;
+
+    UEnum* EnumAsset = Cast<UEnum>(StaticLoadObject(UEnum::StaticClass(), nullptr, *EnumPath));
+    if (!EnumAsset)
+        return false;
+
+    FVector2D NodePosition = LocationOfNode;
+    if (AutoFindPosition)
+        NodePosition = LocalGraph->GetGoodPlaceForNewNode();
+
+    UK2Node_SwitchEnum* NewSwitchEnumNode = NewObject<UK2Node_SwitchEnum>(LocalGraph);
+    if (!NewSwitchEnumNode)
+        return false;
+
+    NewSwitchEnumNode->Enum = EnumAsset;
+
+    NewSwitchEnumNode->SetFlags(RF_Transactional);
+
+    LocalGraph->AddNode(NewSwitchEnumNode, true, false);
+    NewSwitchEnumNode->CreateNewGuid();
+    NewSwitchEnumNode->PostPlacedNewNode();
+    NewSwitchEnumNode->AllocateDefaultPins();
+    NewSwitchEnumNode->NodePosX = NodePosition.X;
+    NewSwitchEnumNode->NodePosY = NodePosition.Y;
+
+    NewNode = NewSwitchEnumNode;
+
+    // NodeIndex = NodeList.Add(NewSwitchEnumNode);
+    return true;
+}
+
+bool FUnrealMCPCommonUtils::SpawnStructNode(UEdGraph* LocalGraph, UScriptStruct* StructType, bool bMakeStruct, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode)
+{
+    if (!LocalGraph)
+        return false;
+
+    FVector2D MyPosition = LocationOfNode;
+    if (AutoFindPosition)
+        MyPosition = LocalGraph->GetGoodPlaceForNewNode();
+
+    // UEdGraphNode* NewNode = nullptr;
+
+    if (bMakeStruct)
+    {
+        UK2Node_MakeStruct* MakeStructNode = NewObject<UK2Node_MakeStruct>(LocalGraph);
+        if (MakeStructNode)
+        {
+            MakeStructNode->StructType = StructType;
+            MakeStructNode->SetFlags(RF_Transactional);
+            MakeStructNode->CreateNewGuid();
+            MakeStructNode->PostPlacedNewNode();
+            MakeStructNode->NodePosX = MyPosition.X;
+            MakeStructNode->NodePosY = MyPosition.Y;
+            MakeStructNode->AllocateDefaultPins();
+            LocalGraph->AddNode(MakeStructNode);
+            NewNode = MakeStructNode;
+            // NodeIndex = NodeList.Add(NewNode);
+            return true;
+        }
+    }
+    else
+    {
+        UK2Node_BreakStruct* BreakStructNode = NewObject<UK2Node_BreakStruct>(LocalGraph);
+        if (BreakStructNode)
+        {
+            BreakStructNode->StructType = StructType;
+            BreakStructNode->SetFlags(RF_Transactional);
+            BreakStructNode->CreateNewGuid();
+            BreakStructNode->PostPlacedNewNode();
+            BreakStructNode->NodePosX = MyPosition.X;
+            BreakStructNode->NodePosY = MyPosition.Y;
+            BreakStructNode->AllocateDefaultPins();
+            LocalGraph->AddNode(BreakStructNode);
+            NewNode = BreakStructNode;
+            // NodeIndex = NodeList.Add(NewNode);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool FUnrealMCPCommonUtils::CreateBlueprintFunction(UBlueprint* BlueprintRef, FString FunctionName,
+    TArray<FKB_FunctionPinInformations> InPins, TArray<FKB_FunctionPinInformations> OutPins, UEdGraph*& FunctionGraph)
+{
+    UBlueprint* LocalBlueprint = BlueprintRef;
+    if (!LocalBlueprint || !IsValid(LocalBlueprint))
+        return false;
+    FText DocumentNameText = LOCTEXT("NewDocFuncName", "NewFunction");
+    FName DocumentName = FName(*DocumentNameText.ToString());
+    if (!SafeFindUniqueKismetName(LocalBlueprint, FunctionName, DocumentName)) {
+        return false;
+    }
+    const FScopedTransaction Transaction(LOCTEXT("AddNewFunction", "Add New Function"));
+    LocalBlueprint->Modify();
+
+    UEdGraph* NewGraph = FBlueprintEditorUtils::CreateNewGraph(LocalBlueprint, DocumentName, UEdGraph::StaticClass(), UEdGraphSchema_K2::StaticClass());
+    FBlueprintEditorUtils::AddFunctionGraph<UClass>(LocalBlueprint, NewGraph, true, nullptr);
+    if (!NewGraph)
+        return false;
+
+    FunctionGraph = NewGraph;
+    
+    TWeakObjectPtr<class UK2Node_EditablePinBase> FunctionEntryNodePtr;
+
+    if (UEdGraph* NewTargetGraph = NewGraph)
+    {
+        TArray<UK2Node_FunctionEntry*> EntryNodes;
+        NewTargetGraph->GetNodesOfClass(EntryNodes);
+        if ((EntryNodes.Num() > 0) && EntryNodes[0]->IsEditable())
+        {
+            FunctionEntryNodePtr = EntryNodes[0];
+        }
+    }
+    UK2Node_EditablePinBase* FunctionEntryNode = FunctionEntryNodePtr.Get();
+    if (FunctionEntryNode)
+    {
+        for (int y = 0; y < InPins.Num(); y++) {
+            EVariablePinType Banana = InPins[y].VarType;
+            EPinContainerType LocalContainerType = EPinContainerType::None;
+            switch (Banana) {
+            case EVariablePinType::Single:
+                LocalContainerType = EPinContainerType::None;
+                break;
+            case EVariablePinType::Array:
+                LocalContainerType = EPinContainerType::Array;
+                break;
+            case EVariablePinType::Set:
+                LocalContainerType = EPinContainerType::Set;
+                break;
+            case EVariablePinType::Map:
+                LocalContainerType = EPinContainerType::Map;
+                break;
+            }
+            FScopedTransaction Transaction2(LOCTEXT("AddInParam", "Add In Parameter"));
+            FunctionEntryNode->Modify();
+            FName LocalPinCategory1 = "None";
+            FName LocalPinSubCategory1 = "None";
+            TWeakObjectPtr<UObject> LocalPinSubObject1 = nullptr;
+
+            if (InPins[y].UseCustomVarType)
+            {
+                if (!InPins[y].CustomVarTypePath.IsEmpty() && !InPins[y].CustomVarTypeName.IsEmpty())
+                {
+                    UObject* CustomType = LoadObject<UObject>(nullptr, *InPins[y].CustomVarTypePath);
+                    if (CustomType)
+                    {
+                        if (UEnum* CustomEnum = Cast<UEnum>(CustomType))
+                        {
+                            LocalPinCategory1 = "byte";
+                            LocalPinSubCategory1 = "None";
+                            LocalPinSubObject1 = CustomEnum;
+                        }
+                        else if (UScriptStruct* CustomStruct = Cast<UScriptStruct>(CustomType))
+                        {
+                            LocalPinCategory1 = "struct";
+                            LocalPinSubCategory1 = "None";
+                            LocalPinSubObject1 = CustomStruct;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                PinVarConversionLocal(InPins[y].Type, LocalPinCategory1, LocalPinSubCategory1, LocalPinSubObject1);
+            }
+
+            FEdGraphPinType MyPinType;
+            MyPinType.bIsConst = false;
+            MyPinType.bIsReference = false;
+            MyPinType.bIsUObjectWrapper = false;
+            MyPinType.bIsWeakPointer = false;
+            MyPinType.ContainerType = LocalContainerType;
+            MyPinType.PinCategory = LocalPinCategory1;
+            MyPinType.PinSubCategory = LocalPinSubCategory1;
+            MyPinType.PinSubCategoryObject = LocalPinSubObject1;
+            MyPinType.PinSubCategoryMemberReference.MemberName = "None";
+            MyPinType.PinValueType.bTerminalIsConst = false;
+            MyPinType.PinValueType.bTerminalIsUObjectWrapper = false;
+            MyPinType.PinValueType.bTerminalIsWeakPointer = false;
+            MyPinType.PinValueType.TerminalCategory = "None";
+            MyPinType.PinValueType.TerminalSubCategory = "None";
+
+            if (LocalContainerType == EPinContainerType::Map) {
+                FName KeyPinCategory = "int";
+                FName ValuePinCategory = "string";
+
+                MyPinType.PinCategory = KeyPinCategory;
+                MyPinType.PinValueType.TerminalCategory = ValuePinCategory;
+                MyPinType.PinValueType.TerminalSubCategory = "None";
+                MyPinType.PinValueType.TerminalSubCategoryObject = nullptr;
+
+                MyPinType.PinSubCategory = "None";
+                MyPinType.PinSubCategoryObject = nullptr;
+            }
+
+            const FName NewPinName = InPins[y].Name;
+            if (!FunctionEntryNode->CreateUserDefinedPin(NewPinName, MyPinType, EGPD_Output))
+            {
+                Transaction2.Cancel();
+            }
+        }
+    }
+    TWeakObjectPtr<class UK2Node_EditablePinBase> FunctionResultNodePtr;
+    FScopedTransaction Transaction3(LOCTEXT("AddOutParam", "Add Out Parameter"));
+
+    LocalBlueprint->Modify();
+    NewGraph->Modify();
+    UK2Node_EditablePinBase* EntryPin = FunctionEntryNodePtr.Get();
+    EntryPin->Modify();
+    for (int32 iPin = 0; iPin < EntryPin->Pins.Num(); iPin++)
+    {
+        EntryPin->Pins[iPin]->Modify();
+    }
+
+    if (!FunctionResultNodePtr.IsValid())
+    {
+        FunctionResultNodePtr = FBlueprintEditorUtils::FindOrCreateFunctionResultNode(FunctionEntryNodePtr.Get());
+    }
+
+    UK2Node_EditablePinBase* FunctionResultNode = FunctionResultNodePtr.Get();
+    if (FunctionResultNode)
+    {
+        for (int i = 0; i < OutPins.Num(); i++) {
+            EVariablePinType Banana2 = OutPins[i].VarType;
+            EPinContainerType LocalContainerType2 = EPinContainerType::None;
+            switch (Banana2) {
+            case EVariablePinType::Single:
+                LocalContainerType2 = EPinContainerType::None;
+                break;
+            case EVariablePinType::Array:
+                LocalContainerType2 = EPinContainerType::Array;
+                break;
+            case EVariablePinType::Set:
+                LocalContainerType2 = EPinContainerType::Set;
+                break;
+            case EVariablePinType::Map:
+                LocalContainerType2 = EPinContainerType::Map;
+                break;
+            }
+            FName LocalPinCategory = "None";
+            FName LocalPinSubCategory = "None";
+            TWeakObjectPtr<UObject> LocalPinSubObject = nullptr;
+
+            if (OutPins[i].UseCustomVarType)
+            {
+                if (!OutPins[i].CustomVarTypePath.IsEmpty() && !OutPins[i].CustomVarTypeName.IsEmpty())
+                {
+                    UObject* CustomType = LoadObject<UObject>(nullptr, *OutPins[i].CustomVarTypePath);
+                    if (CustomType)
+                    {
+                        if (UEnum* CustomEnum = Cast<UEnum>(CustomType))
+                        {
+                            LocalPinCategory = "byte";
+                            LocalPinSubCategory = "None";
+                            LocalPinSubObject = CustomEnum;
+                        }
+                        else if (UScriptStruct* CustomStruct = Cast<UScriptStruct>(CustomType))
+                        {
+                            LocalPinCategory = "struct";
+                            LocalPinSubCategory = "None";
+                            LocalPinSubObject = CustomStruct;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                PinVarConversionLocal(OutPins[i].Type, LocalPinCategory, LocalPinSubCategory, LocalPinSubObject);
+            }
+
+            FEdGraphPinType MyPinType2;
+            MyPinType2.bIsConst = false;
+            MyPinType2.bIsReference = false;
+            MyPinType2.bIsUObjectWrapper = false;
+            MyPinType2.bIsWeakPointer = false;
+            MyPinType2.ContainerType = LocalContainerType2;
+            MyPinType2.PinCategory = LocalPinCategory; 
+            MyPinType2.PinSubCategory = LocalPinSubCategory;
+            MyPinType2.PinSubCategoryObject = LocalPinSubObject;    
+            MyPinType2.PinSubCategoryMemberReference.MemberName = "None";
+            MyPinType2.PinValueType.bTerminalIsConst = false;
+            MyPinType2.PinValueType.bTerminalIsUObjectWrapper = false;
+            MyPinType2.PinValueType.bTerminalIsWeakPointer = false;
+            MyPinType2.PinValueType.TerminalCategory = "None";
+            MyPinType2.PinValueType.TerminalSubCategory = "None";
+            MyPinType2.bIsReference = false;
+
+            const FName NewPinName = FunctionResultNode->CreateUniquePinName(OutPins[i].Name);
+
+            TArray<UK2Node_EditablePinBase*> TargetNodes;
+            if (UK2Node_FunctionResult* ResultNode = Cast<UK2Node_FunctionResult>(FunctionResultNode))
+            {
+                TargetNodes = (TArray<UK2Node_EditablePinBase*>)ResultNode->GetAllResultNodes();
+            }
+            else if (FunctionResultNode) {
+                TargetNodes.Add(FunctionResultNode);
+            }
+            bool bAllChanged = TargetNodes.Num() > 0;
+            for (UK2Node_EditablePinBase* Node : TargetNodes)
+            {
+                Node->Modify();
+                UEdGraphPin* NewPin = Node->CreateUserDefinedPin(NewPinName, MyPinType2, EGPD_Input, false);
+                bAllChanged &= (nullptr != NewPin);
+                if (!bAllChanged)
+                {
+                    break;
+                }
+            }
+            if (!bAllChanged)
+            {
+                Transaction3.Cancel();
+            }
+        }
+    }
+    else
+    {
+        Transaction3.Cancel();
+    }
+    return true;
+}
+
+bool FUnrealMCPCommonUtils::SafeFindUniqueKismetName(UBlueprint* InBlueprint, const FString& InBaseName, FName& ReturnName)
+{
+    if (!IsValid(InBlueprint))
+    {
+        ReturnName = FName(*InBaseName);
+        return false;
+    }
+
+    bool ShouldFail = false;
+
+    FString BaseName = InBaseName.IsEmpty() ? TEXT("NewFunction") : InBaseName;
+    FString KismetName = BaseName;
+
+    if (InBlueprint->GeneratedClass)
+    {
+        int32 Count = 0;
+        bool bNameExists = true;
+
+        while (bNameExists && Count < 1000)      
+        {
+            bNameExists = false;
+
+            for (TFieldIterator<UFunction> FuncIt(InBlueprint->GeneratedClass); FuncIt; ++FuncIt)
+            {
+                if (FuncIt->GetFName().ToString() == KismetName)
+                {
+                    bNameExists = true;
+                    KismetName = FString::Printf(TEXT("%s_%d"), *BaseName, ++Count);
+                    break;
+                }
+            }
+
+            for (UEdGraph* Graph : InBlueprint->UbergraphPages)
+            {
+                if (Graph && Graph->GetFName().ToString() == KismetName)
+                {
+                    bNameExists = true;
+                    KismetName = FString::Printf(TEXT("%s_%d"), *BaseName, ++Count);
+                    break;
+                }
+            }
+
+            if (!bNameExists)
+            {
+                for (UEdGraph* Graph : InBlueprint->FunctionGraphs)
+                {
+                    if (Graph && Graph->GetFName().ToString() == KismetName)
+                    {
+                        bNameExists = true;
+                        KismetName = FString::Printf(TEXT("%s_%d"), *BaseName, ++Count);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    else {
+        ShouldFail = true;
+    }
+    if (ShouldFail) {
+        ReturnName = FName(*InBaseName);
+        return false;
+    }
+    else {
+        ReturnName = FName(*KismetName);
+        return true;
+    }
+}
+
+
+void FUnrealMCPCommonUtils::PinVarConversionLocal(EVariableType VarType, FName& PinCategory, FName& PinSubCategory, TWeakObjectPtr<UObject>& PinSubObject)
+{
+    FName LocalPinCategory = "None";
+    FName LocalPinSubCategory = "None";
+    TWeakObjectPtr<UObject> LocalPinSubObject = nullptr;
+    switch (VarType) {
+    case EVariableType::VarType_Boolean:
+        LocalPinCategory = "bool";
+        break;
+    case EVariableType::VarType_Byte:
+        LocalPinCategory = "byte";
+        break;
+    case EVariableType::VarType_Integer:
+        LocalPinCategory = "int";
+        break;
+    case EVariableType::VarType_Integer64:
+        LocalPinCategory = "int64";
+        break;
+    case EVariableType::VarType_Float:
+        LocalPinCategory = "real";
+        LocalPinSubCategory = "double";
+        break;
+    case EVariableType::VarType_Name:
+        LocalPinCategory = "name";
+        break;
+    case EVariableType::VarType_String:
+        LocalPinCategory = "string";
+        break;
+    case EVariableType::VarType_Text:
+        LocalPinCategory = "text";
+        break;
+    case EVariableType::VarType_Vector:
+        LocalPinCategory = "struct";
+        LocalPinSubObject = TBaseStructure<FVector>::Get();
+        break;
+    case EVariableType::VarType_Rotator:
+        LocalPinCategory = "struct";
+        LocalPinSubObject = TBaseStructure<FRotator>::Get();
+        break;
+    case EVariableType::VarType_Transform:
+        LocalPinCategory = "struct";
+        LocalPinSubObject = TBaseStructure<FTransform>::Get();
+        break;
+    case EVariableType::VarType_Object:
+        LocalPinCategory = "object";
+        LocalPinSubObject = UObject::StaticClass();
+        break;
+    case EVariableType::VarType_Texture2D:
+        LocalPinCategory = "object";
+        LocalPinSubObject = UTexture2D::StaticClass();
+        break;
+    case EVariableType::VarType_Color:
+        LocalPinCategory = "struct";
+        LocalPinSubObject = TBaseStructure<FColor>::Get();
+        break;
+    case EVariableType::VarType_Actor:
+        LocalPinCategory = "object";
+        LocalPinSubObject = AActor::StaticClass();
+        break;
+    case EVariableType::VarType_Vector2D:
+        LocalPinCategory = "struct";
+        LocalPinSubObject = TBaseStructure<FVector2D>::Get();
+        break;
+    case EVariableType::VarType_LinearColor:
+        LocalPinCategory = "struct";
+        LocalPinSubObject = TBaseStructure<FLinearColor>::Get();
+        break;
+    case EVariableType::VarType_SlateColor:
+        LocalPinCategory = "struct";
+        LocalPinSubObject = TBaseStructure<FSlateColor>::Get();
+        break;
+    case EVariableType::VarType_IntPoint:
+        LocalPinCategory = "struct";
+        LocalPinSubObject = TBaseStructure<FIntPoint>::Get();
+        break;
+    case EVariableType::VarType_DateTime:
+        LocalPinCategory = "struct";
+        LocalPinSubObject = TBaseStructure<FDateTime>::Get();
+        break;
+    case EVariableType::VarType_Timespan:
+        LocalPinCategory = "struct";
+        break;
+    case EVariableType::VarType_IntVector:
+        LocalPinCategory = "struct";
+        LocalPinSubObject = TBaseStructure<FIntVector>::Get();
+        break;
+    case EVariableType::VarType_IntVector4:
+        LocalPinCategory = "struct";
+        LocalPinSubObject = TBaseStructure<FIntVector4>::Get();
+        break;
+    case EVariableType::VarType_SaveGame:
+        LocalPinCategory = "object";
+        LocalPinSubObject = USaveGame::StaticClass();
+        break;
+    }
+
+    PinCategory = LocalPinCategory;
+    PinSubCategory = LocalPinSubCategory;
+    PinSubObject = LocalPinSubObject;
+}
+
+TEnumAsByte<EVariableType> FUnrealMCPCommonUtils::GetVariableTypeFromString(const FString& TypeString)
+{
+    if (TypeString == "Boolean")
+        return EVariableType::VarType_Boolean;
+    else if (TypeString == "Byte")
+        return EVariableType::VarType_Byte;
+    else if (TypeString == "Integer")
+        return EVariableType::VarType_Integer;
+    else if (TypeString == "Integer64")
+        return EVariableType::VarType_Integer64;
+    else if (TypeString == "Float")
+        return EVariableType::VarType_Float;
+    else if (TypeString == "Name")
+        return EVariableType::VarType_Name;
+    else if (TypeString == "String")
+        return EVariableType::VarType_String;
+    else if (TypeString == "Text")
+        return EVariableType::VarType_Text;
+    else if (TypeString == "Vector")
+        return EVariableType::VarType_Vector;
+    else if (TypeString == "Rotator")
+        return EVariableType::VarType_Rotator;
+    else if (TypeString == "Transform")
+        return EVariableType::VarType_Transform;
+    else if (TypeString == "Object")
+        return EVariableType::VarType_Object;
+    else if (TypeString == "Texture2D")
+        return EVariableType::VarType_Texture2D;
+    else if (TypeString == "Color")
+        return EVariableType::VarType_Color;
+    else if (TypeString == "Actor")
+        return EVariableType::VarType_Actor;
+    else if (TypeString == "Vector2D")
+        return EVariableType::VarType_Vector2D;
+    else if (TypeString == "LinearColor")
+        return EVariableType::VarType_LinearColor;
+    else if (TypeString == "SlateColor")
+        return EVariableType::VarType_SlateColor;
+    else if (TypeString == "IntPoint")
+        return EVariableType::VarType_IntPoint;
+    else if (TypeString == "DateTime")
+        return EVariableType::VarType_DateTime;
+    else if (TypeString == "Timespan")
+        return EVariableType::VarType_Timespan;
+    else if (TypeString == "IntVector")
+        return EVariableType::VarType_IntVector;
+    else if (TypeString == "IntVector4")
+        return EVariableType::VarType_IntVector4;
+    else if (TypeString == "SaveGame")
+        return EVariableType::VarType_SaveGame;
+
+    else
+        return EVariableType::VarType_Boolean; // Default case
+}
+
+TEnumAsByte<EVariablePinType> FUnrealMCPCommonUtils::GetVariablePinTypeFromString(const FString& TypeString)
+{
+    if (TypeString == "Single")
+        return EVariablePinType::Single;
+    else if (TypeString == "Array")
+        return EVariablePinType::Array;
+    else if (TypeString == "Set")
+        return EVariablePinType::Set;
+    else if (TypeString == "Map")
+        return EVariablePinType::Map;
+    else
+        return EVariablePinType::Single; // Default case
+
+}
+
+#undef LOCTEXT_NAMESPACE

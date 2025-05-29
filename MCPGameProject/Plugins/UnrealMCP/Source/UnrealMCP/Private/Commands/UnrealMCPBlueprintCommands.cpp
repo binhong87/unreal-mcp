@@ -63,6 +63,10 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintCommands::HandleCommand(const FString
     {
         return HandleSetPawnProperties(Params);
     }
+    else if (CommandType == TEXT("add_function_to_blueprint"))
+    {
+        return HandleAddFunctionToBlueprint(Params);
+    }
     
     return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Unknown blueprint command: %s"), *CommandType));
 }
@@ -76,8 +80,13 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintCommands::HandleCreateBlueprint(const
         return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'name' parameter"));
     }
 
+    FString PackagePath;
+    if (!Params->TryGetStringField(TEXT("path"), PackagePath))
+    {
+        PackagePath = TEXT("/Game/Blueprints/");        
+    } 
+
     // Check if blueprint already exists
-    FString PackagePath = TEXT("/Game/Blueprints/");
     FString AssetName = BlueprintName;
     if (UEditorAssetLibrary::DoesAssetExist(PackagePath + AssetName))
     {
@@ -1157,4 +1166,131 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintCommands::HandleSetPawnProperties(con
     ResponseObj->SetBoolField(TEXT("success"), bAnyPropertiesSet);
     ResponseObj->SetObjectField(TEXT("results"), ResultsObj);
     return ResponseObj;
-} 
+}
+
+TSharedPtr<FJsonObject> FUnrealMCPBlueprintCommands::HandleAddFunctionToBlueprint(const TSharedPtr<FJsonObject>& Params)
+{
+    // Get required parameters
+    FString BlueprintName;
+    FString FunctionName;
+    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
+    }
+    // Find the blueprint
+    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
+    if (!Blueprint)
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
+    }
+    if (!Params->TryGetStringField(TEXT("function_name"), FunctionName))
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_name' parameter"));
+    }
+    TArray<FKB_FunctionPinInformations> InPins;
+    TArray<FKB_FunctionPinInformations> OutPins;
+    if (Params->HasField(TEXT("in_params")))
+    {
+        TArray<TSharedPtr<FJsonValue>> InPinsArray = Params->GetArrayField(TEXT("in_params"));
+        for (const TSharedPtr<FJsonValue>& PinValue : InPinsArray)
+        {
+            FKB_FunctionPinInformations PinInfo;
+            if (PinValue->Type == EJson::Object)
+            {
+                TSharedPtr<FJsonObject> PinObj = PinValue->AsObject();
+                FString PinName;
+                if (PinObj->TryGetStringField(TEXT("name"), PinName))
+                {
+                    PinInfo.Name = FName(PinName);
+                }
+                else
+                {
+                    return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'name' field in param"));
+                }
+                FString TypeStr;
+                if (PinObj->TryGetStringField(TEXT("type"), TypeStr))
+                {
+                    PinInfo.Type = FUnrealMCPCommonUtils::GetVariableTypeFromString(TypeStr);
+                }
+                else
+                {
+                    return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Missing 'type' field in param %s"), *PinInfo.Name.ToString()));
+                }
+                FString PinTypeStr;
+                if (PinObj->TryGetStringField(TEXT("pin_type"), PinTypeStr))
+                {
+                    PinInfo.VarType = FUnrealMCPCommonUtils::GetVariablePinTypeFromString(PinTypeStr);
+                }
+                else
+                {
+                    PinInfo.VarType = EVariablePinType::Single; // Default to single pin type if not specified
+                }
+
+                // PinObj->TryGetStringField(TEXT("custom_var_type_name"), PinInfo.CustomVarTypeName);
+                // PinObj->TryGetStringField(TEXT("custom_var_type_path"), PinInfo.CustomVarTypePath);
+                InPins.Add(PinInfo);
+            }
+        }
+    }
+    if (Params->HasField(TEXT("out_params")))
+    {
+        TArray<TSharedPtr<FJsonValue>> OutPinsArray = Params->GetArrayField(TEXT("out_params"));
+        for (const TSharedPtr<FJsonValue>& PinValue : OutPinsArray)
+        {
+            FKB_FunctionPinInformations PinInfo;
+            if (PinValue->Type == EJson::Object)
+            {
+                TSharedPtr<FJsonObject> PinObj = PinValue->AsObject();
+                FString PinName;
+                if (PinObj->TryGetStringField(TEXT("name"), PinName))
+                {
+                    PinInfo.Name = FName(PinName);
+                }
+                else
+                {
+                    return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'name' field in param"));
+                }
+                FString TypeStr;
+                if (PinObj->TryGetStringField(TEXT("type"), TypeStr))
+                {
+                    PinInfo.Type = FUnrealMCPCommonUtils::GetVariableTypeFromString(TypeStr);
+                }
+                else
+                {
+                    return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Missing 'type' field in param %s"), *PinInfo.Name.ToString()));
+                }
+                FString PinTypeStr;
+                if (PinObj->TryGetStringField(TEXT("pin_type"), PinTypeStr))
+                {
+                    PinInfo.VarType = FUnrealMCPCommonUtils::GetVariablePinTypeFromString(PinTypeStr);
+                }
+                else
+                {
+                    PinInfo.VarType = EVariablePinType::Single; // Default to single pin type if not specified
+                }
+
+                // PinObj->TryGetStringField(TEXT("custom_var_type_name"), PinInfo.CustomVarTypeName);
+                // PinObj->TryGetStringField(TEXT("custom_var_type_path"), PinInfo.CustomVarTypePath);
+                OutPins.Add(PinInfo);
+            }
+        }
+    }
+    // Create the function
+    UEdGraph* NewFunction = nullptr;
+    FUnrealMCPCommonUtils::CreateBlueprintFunction(Blueprint, FunctionName, InPins, OutPins, NewFunction);
+    if (!NewFunction)
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Failed to create function %s in blueprint %s"), *FunctionName, *BlueprintName));
+    }
+
+    // Compile the blueprint
+    FKismetEditorUtilities::CompileBlueprint(Blueprint);
+
+    // Mark the blueprint as modified
+    FBlueprintEditorUtils::MarkBlueprintAsModified(Blueprint);
+    TSharedPtr<FJsonObject> ResultObj = MakeShared<FJsonObject>();
+    ResultObj->SetStringField(TEXT("blueprint"), BlueprintName);
+    ResultObj->SetStringField(TEXT("function"), FunctionName);
+    ResultObj->SetBoolField(TEXT("success"), true);
+    return ResultObj;
+}
