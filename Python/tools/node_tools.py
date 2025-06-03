@@ -118,65 +118,6 @@ def register_blueprint_node_tools(mcp: FastMCP):
             error_msg = f"Error adding input action node: {e}"
             logger.error(error_msg)
             return {"success": False, "message": error_msg}
-    
-    @mcp.tool()
-    def add_blueprint_function_node(
-        ctx: Context,
-        blueprint_name: str,
-        target: str,
-        function_name: str,
-        params = None,
-        node_position = None
-    ) -> Dict[str, Any]:
-        """
-        Add a function call node to a Blueprint's event graph.
-        
-        Args:
-            blueprint_name: Name of the target Blueprint
-            target: Target object for the function (component name or self)
-            function_name: Name of the function to call
-            params: Optional parameters to set on the function node
-            node_position: Optional [X, Y] position in the graph
-            
-        Returns:
-            Response containing the node ID and success status
-        """
-        from unreal_mcp_server import get_unreal_connection
-        
-        try:
-            # Handle default values within the method body
-            if params is None:
-                params = {}
-            if node_position is None:
-                node_position = [0, 0]
-            
-            command_params = {
-                "blueprint_name": blueprint_name,
-                "target": target,
-                "function_name": function_name,
-                "params": params,
-                "node_position": node_position
-            }
-            
-            unreal = get_unreal_connection()
-            if not unreal:
-                logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
-            
-            logger.info(f"Adding function node '{function_name}' to blueprint '{blueprint_name}'")
-            response = unreal.send_command("add_blueprint_function_node", command_params)
-            
-            if not response:
-                logger.error("No response from Unreal Engine")
-                return {"success": False, "message": "No response from Unreal Engine"}
-            
-            logger.info(f"Function node creation response: {response}")
-            return response
-            
-        except Exception as e:
-            error_msg = f"Error adding function node: {e}"
-            logger.error(error_msg)
-            return {"success": False, "message": error_msg}
             
     @mcp.tool()
     def connect_blueprint_nodes(
@@ -428,3 +369,452 @@ def register_blueprint_node_tools(mcp: FastMCP):
             return {"success": False, "message": error_msg}
     
     logger.info("Blueprint node tools registered successfully")
+
+    @mcp.tool()
+    def add_blueprint_function_node(
+        ctx: Context,
+        blueprint_name: str,
+        target: str,
+        function_name: str,
+        params = None,
+        node_position = None
+    ) -> Dict[str, Any]:
+        """
+        Add a function call node to a Blueprint's event graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            target: Target object for the function (component name or self)
+            function_name: Name of the function to call
+            params: Optional parameters to set on the function node
+            node_position: Optional [X, Y] position in the graph
+            
+        Returns:
+            Response containing the node ID and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            # Handle default values within the method body
+            if params is None:
+                params = {}
+            if node_position is None:
+                node_position = [0, 0]
+            
+            command_params = {
+                "blueprint_name": blueprint_name,
+                "target": target,
+                "function_name": function_name,
+                "params": params,
+                "node_position": node_position
+            }
+            
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Adding function node '{function_name}' to blueprint '{blueprint_name}'")
+            response = unreal.send_command("add_blueprint_function_node", command_params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Function node creation response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error adding function node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+        
+    @mcp.tool()
+    def add_function_call_node(            
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str,
+        target_class: str,
+        target_function: str,
+        params = None,
+        node_position = None
+    ) -> Dict[str, Any]:
+        """
+        Add a function call node to a Blueprint's event graph or function graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            target_class: Class of the target object (e.g., 'Self', 'MyComponent')
+            target_function: Specific function to call on the target
+            params: Optional parameters to set on the function node
+            node_position: Optional [X, Y] position in the graph
+            
+        Returns:
+            Response containing the node ID and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            # Handle default values within the method body
+            if params is None:
+                params = {}
+            if node_position is None:
+                node_position = [0, 0]
+            
+            command_params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name,
+                "target_class": target_class,
+                "target_function": target_function,
+                "params": params,
+                "node_position": node_position
+            }
+            
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Adding function call node '{function_or_graph_name}' to blueprint '{blueprint_name}'")
+            response = unreal.send_command("add_function_call_node", command_params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Function call node creation response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error adding function call node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+
+
+    @mcp.tool()
+    def add_math_node(
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str,
+        operation: str,
+        data_type: str
+    ) -> Dict[str, Any]:
+        """
+        Add a math operation node to a Blueprint's event graph or function graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            operation: Math operation to perform (Add, Subtract, Multiply, Divide)
+            data_type: Type of data (Integer, Float, Vector, etc.)
+            
+        Returns:
+            Response containing the node ID and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            command_params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name,
+                "operation": operation,
+                "data_type": data_type
+            }
+            
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Adding math node '{operation}' to blueprint '{blueprint_name}'")
+            response = unreal.send_command("add_math_node", command_params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Math node creation response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error adding math node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+        
+    @mcp.tool()
+    def add_control_node(
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str,
+        control_type: str
+    ) -> Dict[str, Any]:
+        """
+        Add a control flow node to a Blueprint's event graph or function graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            control_type: Type of control node (Branch, Sequence, ForLoop, etc.)
+            
+        Returns:
+            Response containing the node ID and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            command_params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name,
+                "control_type": control_type
+            }
+            
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Adding control node '{control_type}' to blueprint '{blueprint_name}'")
+            response = unreal.send_command("add_control_node", command_params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Control node creation response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error adding control node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+    
+    @mcp.tool()
+    def add_sequence_node(
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str
+    ) -> Dict[str, Any]:
+        """
+        Add a sequence node to a Blueprint's event graph or function graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            
+        Returns:
+            Response containing the node ID and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            command_params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name
+            }
+            
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Adding sequence node to blueprint '{blueprint_name}'")
+            response = unreal.send_command("add_sequence_node", command_params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Sequence node creation response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error adding sequence node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+        
+    @mcp.tool()
+    def add_select_node(
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str
+    ) -> Dict[str, Any]:
+        """
+        Add a select node to a Blueprint's event graph or function graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            
+        Returns:
+            Response containing the node ID and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            command_params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name
+            }
+            
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Adding select node to blueprint '{blueprint_name}'")
+            response = unreal.send_command("add_select_node", command_params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Select node creation response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error adding select node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+    
+    @mcp.tool()
+    def add_enum_switch_node(
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str,
+        enum_path: str
+    ) -> Dict[str, Any]:
+        """
+        Add an enum switch node to a Blueprint's event graph or function graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            enum_path: Path to the enum type (e.g., '/Game/Enums/MyEnum.MyEnum')
+            
+        Returns:
+            Response containing the node ID and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            command_params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name,
+                "enum_path": enum_path
+            }
+            
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Adding enum switch node for '{enum_path}' to blueprint '{blueprint_name}'")
+            response = unreal.send_command("add_enum_switch_node", command_params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Enum switch node creation response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error adding enum switch node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+        
+    @mcp.tool()
+    def add_make_struct_node(            
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str,
+        struct_path: str
+    ) -> Dict[str, Any]:
+        """
+        Add a make struct node to a Blueprint's event graph or function graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            struct_path: Path to the struct type (e.g., '/Game/Structs/MyStruct.MyStruct')
+            
+        Returns:
+            Response containing the node ID and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            command_params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name,
+                "struct_path": struct_path
+            }
+            
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Adding make struct node for '{struct_path}' to blueprint '{blueprint_name}'")
+            response = unreal.send_command("add_make_struct_node", command_params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Make struct node creation response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error adding make struct node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+        
+        
+    @mcp.tool()
+    def add_break_struct_node(            
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str,
+        struct_path: str
+    ) -> Dict[str, Any]:
+        """
+        Add a break struct node to a Blueprint's event graph or function graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            struct_path: Path to the struct type (e.g., '/Game/Structs/MyStruct.MyStruct')
+            
+        Returns:
+            Response containing the node ID and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            command_params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name,
+                "struct_path": struct_path
+            }
+            
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Adding break struct node for '{struct_path}' to blueprint '{blueprint_name}'")
+            response = unreal.send_command("add_break_struct_node", command_params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Break struct node creation response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error adding break struct node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}

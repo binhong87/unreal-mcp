@@ -26,4 +26,11 @@ private:
     TSharedPtr<FJsonObject> HandleFindBlueprintNodes(const TSharedPtr<FJsonObject>& Params);
 
     TSharedPtr<FJsonObject> HandleAddFunctionCallNode(const TSharedPtr<FJsonObject>& Params);
+    TSharedPtr<FJsonObject> HandleAddMathNode(const TSharedPtr<FJsonObject>& Params);
+    TSharedPtr<FJsonObject> HandleAddControlNode(const TSharedPtr<FJsonObject>& Params);
+    TSharedPtr<FJsonObject> HandleAddSequenceNode(const TSharedPtr<FJsonObject>& Params);
+    TSharedPtr<FJsonObject> HandleAddSelectNode(const TSharedPtr<FJsonObject>& Params);
+    TSharedPtr<FJsonObject> HandleAddEnumSwitchNode(const TSharedPtr<FJsonObject>& Params);
+    TSharedPtr<FJsonObject> HandleAddMakeStructNode(const TSharedPtr<FJsonObject>& Params);
+    TSharedPtr<FJsonObject> HandleAdBreakStructNode(const TSharedPtr<FJsonObject>& Params);
 }; 

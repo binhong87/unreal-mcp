@@ -264,4 +264,12 @@ public:
 
 	static TEnumAsByte<EVariablePinType> GetVariablePinTypeFromString(const FString& TypeString);
 
+	static EArithmeticOperation GetArithmeticOperationFromString(const FString& OperationString);
+
+	static EArithmeticDataType GetArithmeticDataTypeFromString(const FString& DataTypeString);
+
+	static EK2NodeType GetK2NodeTypeFromString(const FString& NodeTypeString);
+
+	static FKB_PinTypeInformations GetPinTypeFromString(const FString& PinTypeString);
+
 };

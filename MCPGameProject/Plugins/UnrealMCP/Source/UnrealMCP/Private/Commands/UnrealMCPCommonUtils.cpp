@@ -1650,4 +1650,78 @@ TEnumAsByte<EVariablePinType> FUnrealMCPCommonUtils::GetVariablePinTypeFromStrin
 
 }
 
+EArithmeticOperation FUnrealMCPCommonUtils::GetArithmeticOperationFromString(const FString& OperationString)
+{
+    if (OperationString == "Add")
+        return EArithmeticOperation::Add;
+    else if (OperationString == "Subtract")
+        return EArithmeticOperation::Subtract;
+    else if (OperationString == "Multiply")
+        return EArithmeticOperation::Multiply;
+    else if (OperationString == "Divide")
+        return EArithmeticOperation::Divide;
+    else
+        return EArithmeticOperation::Add; // Default case
+}
+
+EArithmeticDataType FUnrealMCPCommonUtils::GetArithmeticDataTypeFromString(const FString& DataTypeString)
+{
+    if (DataTypeString == "Integer")
+        return EArithmeticDataType::ArithType_Integer;
+    else if (DataTypeString == "Float")
+        return EArithmeticDataType::ArithType_Float;
+    else if (DataTypeString == "Byte")
+        return EArithmeticDataType::ArithType_Byte;
+    else if (DataTypeString == "Integer64")
+        return EArithmeticDataType::ArithType_Integer64;
+    else if (DataTypeString == "Vector")
+        return EArithmeticDataType::ArithType_Vector;
+    else if (DataTypeString == "Vector2D")
+        return EArithmeticDataType::ArithType_Vector2D;
+    else if (DataTypeString == "Vector4")
+        return EArithmeticDataType::ArithType_Vector4;
+    else if (DataTypeString == "Rotator")
+        return EArithmeticDataType::ArithType_Rotator;
+    else if (DataTypeString == "Transform")
+        return EArithmeticDataType::ArithType_Transform;
+    else if (DataTypeString == "LinearColor")
+        return EArithmeticDataType::ArithType_LinearColor;
+    else if (DataTypeString == "IntPoint")
+        return EArithmeticDataType::ArithType_IntPoint;
+    else if (DataTypeString == "DateTime")
+        return EArithmeticDataType::ArithType_DateTime;
+    else if (DataTypeString == "Timespan")
+        return EArithmeticDataType::ArithType_Timespan;
+    else if (DataTypeString == "IntVector")
+        return EArithmeticDataType::ArithType_IntVector;
+    else if (DataTypeString == "Plane")
+        return EArithmeticDataType::ArithType_Plane;
+    else if (DataTypeString == "Quaternion")
+        return EArithmeticDataType::ArithType_Quat;
+    else
+        return EArithmeticDataType::ArithType_Integer; // Default case
+}
+
+EK2NodeType FUnrealMCPCommonUtils::GetK2NodeTypeFromString(const FString& NodeTypeString)
+{
+    if (NodeTypeString == "If")
+        return EK2NodeType::K2NodeType_If;
+    else if (NodeTypeString == "For")
+        return EK2NodeType::K2NodeType_For;
+    else if (NodeTypeString == "Foreach")
+        return EK2NodeType::K2NodeType_Foreach;
+    else if (NodeTypeString == "While")
+        return EK2NodeType::K2NodeType_While;
+    else if (NodeTypeString == "Do")
+        return EK2NodeType::K2NodeType_Do;
+    else if (NodeTypeString == "SwitchInt")
+        return EK2NodeType::K2NodeType_SwitchInt;
+    else if (NodeTypeString == "SwitchString")
+        return EK2NodeType::K2NodeType_SwitchString;
+    else if (NodeTypeString == "SwitchEnum")
+        return EK2NodeType::K2NodeType_SwitchEnum;
+    else
+        return EK2NodeType::K2NodeType_If; // Default case
+}
+
 #undef LOCTEXT_NAMESPACE
