@@ -63,9 +63,10 @@ uint32 FMCPServerRunnable::Run()
                     if (ClientSocket->Recv(Buffer, sizeof(Buffer), BytesRead))
                     {
                         if (BytesRead == 0)
-                        {
-                            UE_LOG(LogTemp, Display, TEXT("MCPServerRunnable: Client disconnected (zero bytes)"));
-                            break;
+                        {                            
+                            // Small sleep to prevent tight loop when no data
+                            FPlatformProcess::Sleep(0.1f);
+                            continue;
                         }
 
                         // Convert received data to string
@@ -91,12 +92,14 @@ uint32 FMCPServerRunnable::Run()
                                 
                                 // Send response
                                 int32 BytesSent = 0;
-                                if (!ClientSocket->Send((uint8*)TCHAR_TO_UTF8(*Response), Response.Len(), BytesSent))
+                                char* data = TCHAR_TO_UTF8(*Response);
+                                int length = strlen(data);
+                                if (!ClientSocket->Send((uint8*)data, length, BytesSent))
                                 {
                                     UE_LOG(LogTemp, Warning, TEXT("MCPServerRunnable: Failed to send response"));
                                 }
                                 else {
-                                    UE_LOG(LogTemp, Display, TEXT("MCPServerRunnable: Response sent successfully, bytes: %d"), BytesSent);
+                                    UE_LOG(LogTemp, Display, TEXT("MCPServerRunnable: Response sent successfully, length %d, sent: %d"), length, BytesSent);
                                 }
                             }
                             else
@@ -120,8 +123,6 @@ uint32 FMCPServerRunnable::Run()
                         {
                             UE_LOG(LogTemp, Verbose, TEXT("MCPServerRunnable: Socket would block, continuing..."));
                             bShouldBreak = false;
-                            // Small sleep to prevent tight loop when no data
-                            FPlatformProcess::Sleep(0.01f);
                         }
                         // Check for other transient errors we might want to tolerate
                         else if (LastError == SE_EINTR) // Interrupted system call
@@ -129,7 +130,7 @@ uint32 FMCPServerRunnable::Run()
                             UE_LOG(LogTemp, Warning, TEXT("MCPServerRunnable: Socket read interrupted, continuing..."));
                             bShouldBreak = false;
                         }
-                        else 
+                        else if (LastError != SE_NO_ERROR) // Any other error
                         {
                             UE_LOG(LogTemp, Warning, TEXT("MCPServerRunnable: Client disconnected or error. Last error code: %d"), LastError);
                         }
@@ -137,9 +138,13 @@ uint32 FMCPServerRunnable::Run()
                         if (bShouldBreak)
                         {
                             break;
-                        }
+                        }                        
                     }
+                    
+                    // Small sleep to prevent tight loop when no data
+                    FPlatformProcess::Sleep(0.1f);
                 }
+                ClientSocket->Close();
             }
             else
             {

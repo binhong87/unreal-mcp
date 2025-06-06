@@ -270,6 +270,6 @@ public:
 
 	static EK2NodeType GetK2NodeTypeFromString(const FString& NodeTypeString);
 
-	static FKB_PinTypeInformations GetPinTypeFromString(const FString& PinTypeString);
+	// static FKB_PinTypeInformations GetPinTypeFromString(const FString& PinTypeString);
 
 };

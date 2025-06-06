@@ -10,6 +10,8 @@ public class UnrealMCP : ModuleRules
 		// Use IWYUSupport instead of the deprecated bEnforceIWYU in UE5.5
 		IWYUSupport = IWYUSupport.Full;
 
+		OptimizeCode = CodeOptimization.Never;
+
 		PublicIncludePaths.AddRange(
 			new string[] {
 				// ... add public include paths required here ...
