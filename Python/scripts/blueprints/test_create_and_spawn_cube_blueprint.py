@@ -31,14 +31,12 @@ logger = logging.getLogger("TestBasicBlueprint")
 
 def send_command(sock: socket.socket, command: str, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """Send a command to the Unreal MCP server and get the response."""
-    try:        
-
+    try:
         # Create command object
         command_obj = {
             "type": command,
             "params": params
-        }
-        
+        }        
         # Convert to JSON and send
         command_json = json.dumps(command_obj)
         logger.info(f"Sending command: {command_json}")

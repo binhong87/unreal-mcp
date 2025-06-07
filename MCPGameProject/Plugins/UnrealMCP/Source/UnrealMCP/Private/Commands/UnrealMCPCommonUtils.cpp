@@ -742,15 +742,12 @@ bool FUnrealMCPCommonUtils::SetObjectProperty(UObject* Object, const FString& Pr
 }
 
 
-bool FUnrealMCPCommonUtils::SpawnFunctionCallNode(UEdGraph* LocalGraph, FName NameOfFunction, UClass* ClassOfFunction, bool AutoFindPosition, FVector2D LocationOfFunction, UEdGraphNode*& NewNode)
+bool FUnrealMCPCommonUtils::SpawnFunctionCallNode(UEdGraph* LocalGraph, FName NameOfFunction, UClass* ClassOfFunction, UEdGraphNode*& NewNode)
 {
     if (!ClassOfFunction)
         return false;
     if (!LocalGraph)
         return false;
-    FVector2D MyPosition = LocationOfFunction;
-    if (AutoFindPosition)
-        MyPosition = LocalGraph->GetGoodPlaceForNewNode();
 
     UFunction* Function = ClassOfFunction->FindFunctionByName(NameOfFunction);
     if (!Function)
@@ -760,13 +757,12 @@ bool FUnrealMCPCommonUtils::SpawnFunctionCallNode(UEdGraph* LocalGraph, FName Na
     if (FunctionNodeSpawner)
     {
         FunctionNodeSpawner->SetFlags(RF_Transactional);
-        NewNode = FunctionNodeSpawner->Invoke(LocalGraph, IBlueprintNodeBinder::FBindingSet(), FVector2D(MyPosition.X, MyPosition.Y));
-        // NodeIndex = NodeList.Add(NewNode);
+        NewNode = FunctionNodeSpawner->Invoke(LocalGraph, IBlueprintNodeBinder::FBindingSet(), LocalGraph->GetGoodPlaceForNewNode());
     }
     return true;
 }
 
-bool FUnrealMCPCommonUtils::SpawnMathNode(UEdGraph* LocalGraph, EArithmeticOperation Operation, EArithmeticDataType DataType, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode)
+bool FUnrealMCPCommonUtils::SpawnMathNode(UEdGraph* LocalGraph, EArithmeticOperation Operation, EArithmeticDataType DataType, UEdGraphNode*& NewNode)
 {
     UEdGraph* Graph = LocalGraph;
     if (!Graph)
@@ -776,10 +772,7 @@ bool FUnrealMCPCommonUtils::SpawnMathNode(UEdGraph* LocalGraph, EArithmeticOpera
     if (!Schema)
         return false;
 
-    FVector2D NodePosition = LocationOfNode;
-    if (AutoFindPosition)
-        NodePosition = Graph->GetGoodPlaceForNewNode();
-
+    FVector2D NodePosition = Graph->GetGoodPlaceForNewNode();
     FName FunctionName;
     bool bIsValidOperation = true;
 
@@ -918,7 +911,6 @@ bool FUnrealMCPCommonUtils::SpawnMathNode(UEdGraph* LocalGraph, EArithmeticOpera
         FunctionNode->NodePosY = NodePosition.Y;
         FunctionNode->SnapToGrid(16);
 
-        // NodeIndex = NodeList.Add(FunctionNode);
         NewNode = FunctionNode;
         return true;
     }
@@ -926,15 +918,12 @@ bool FUnrealMCPCommonUtils::SpawnMathNode(UEdGraph* LocalGraph, EArithmeticOpera
     return false;
 }
 
-bool FUnrealMCPCommonUtils::SpawnSequenceNode(UEdGraph* LocalGraph, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode)
+bool FUnrealMCPCommonUtils::SpawnSequenceNode(UEdGraph* LocalGraph, UEdGraphNode*& NewNode)
 {
     if (!LocalGraph)
         return false;
 
-    FVector2D NodePosition = LocationOfNode;
-    if (AutoFindPosition)
-        NodePosition = LocalGraph->GetGoodPlaceForNewNode();
-
+    FVector2D NodePosition = LocalGraph->GetGoodPlaceForNewNode();
     UK2Node_ExecutionSequence* NewSequenceNode = NewObject<UK2Node_ExecutionSequence>(LocalGraph);
     if (!NewSequenceNode)
         return false;
@@ -949,35 +938,23 @@ bool FUnrealMCPCommonUtils::SpawnSequenceNode(UEdGraph* LocalGraph, bool AutoFin
     NewSequenceNode->NodePosY = NodePosition.Y;
 
     NewNode = NewSequenceNode;
-    // NodeIndex = NodeList.Add(NewSequenceNode);
 
     return true;
 }
 
-bool FUnrealMCPCommonUtils::SpawnNodeByType(UEdGraph* LocalGraph, EK2NodeType NodeType, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode)
+bool FUnrealMCPCommonUtils::SpawnNodeByType(UEdGraph* LocalGraph, EK2NodeType NodeType, UEdGraphNode*& NewNode)
 {
     if (!LocalGraph)
         return false;
-    FVector2D NodePosition = LocationOfNode;
-    if (AutoFindPosition)
-        NodePosition = LocalGraph->GetGoodPlaceForNewNode();
-    UK2Node_IfThenElse* NewBranchNode = nullptr;
+    FVector2D NodePosition = LocalGraph->GetGoodPlaceForNewNode();
+    UK2Node* NewCreatedNode = nullptr;
+    
     switch (NodeType) {
     case EK2NodeType::K2NodeType_If:
-        NewBranchNode = NewObject<UK2Node_IfThenElse>(LocalGraph);
-        if (!NewBranchNode)
-            return false;
-        NewBranchNode->SetFlags(RF_Transactional);
-        LocalGraph->AddNode(NewBranchNode, true, false);
-        NewBranchNode->CreateNewGuid();
-        NewBranchNode->PostPlacedNewNode();
-        NewBranchNode->AllocateDefaultPins();
-        NewBranchNode->NodePosX = NodePosition.X;
-        NewBranchNode->NodePosY = NodePosition.Y;
-        NewNode = NewBranchNode;
-        // NodeIndex = NodeList.Add(NewBranchNode);
+        NewCreatedNode = NewObject<UK2Node_IfThenElse>(LocalGraph);
         break;
     case EK2NodeType::K2NodeType_For:
+        // NewCreatedNode = NewObject<UK2Node_ForEachLoop>(LocalGraph);
         return false;
         break;
     case EK2NodeType::K2NodeType_Foreach:
@@ -990,32 +967,37 @@ bool FUnrealMCPCommonUtils::SpawnNodeByType(UEdGraph* LocalGraph, EK2NodeType No
         return false;
         break;
     case EK2NodeType::K2NodeType_SwitchString:
-        UK2Node_SwitchString* NewSwitchStringNode = NewObject<UK2Node_SwitchString>(LocalGraph);
-        if (!NewSwitchStringNode)
-            return false;
-        NewSwitchStringNode->SetFlags(RF_Transactional);
-        LocalGraph->AddNode(NewSwitchStringNode, true, false);
-        NewSwitchStringNode->CreateNewGuid();
-        NewSwitchStringNode->PostPlacedNewNode();
-        NewSwitchStringNode->AllocateDefaultPins();
-        NewSwitchStringNode->NodePosX = NodePosition.X;
-        NewSwitchStringNode->NodePosY = NodePosition.Y;
-        NewNode = NewSwitchStringNode;
-        // NodeIndex = NodeList.Add(NewSwitchStringNode);
+        NewCreatedNode = NewObject<UK2Node_SwitchString>(LocalGraph);
+        break;
+    case K2NodeType_SwitchInt:
+        break;
+    case K2NodeType_SwitchEnum:
         break;
     }
+    
+    if (!NewCreatedNode)
+    {    
+        NewNode = nullptr;
+        return false;
+    }
+    
+    NewCreatedNode->SetFlags(RF_Transactional);
+    LocalGraph->AddNode(NewCreatedNode, true, false);
+    NewCreatedNode->CreateNewGuid();
+    NewCreatedNode->PostPlacedNewNode();
+    NewCreatedNode->AllocateDefaultPins();
+    NewCreatedNode->NodePosX = NodePosition.X;
+    NewCreatedNode->NodePosY = NodePosition.Y;
+    NewNode = NewCreatedNode;
     return true;
 }
 
-bool FUnrealMCPCommonUtils::SpawnSelectNode(UEdGraph* LocalGraph, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode)
+bool FUnrealMCPCommonUtils::SpawnSelectNode(UEdGraph* LocalGraph, UEdGraphNode*& NewNode)
 {
     if (!LocalGraph)
         return false;
 
-    FVector2D NodePosition = LocationOfNode;
-    if (AutoFindPosition)
-        NodePosition = LocalGraph->GetGoodPlaceForNewNode();
-
+    FVector2D NodePosition = LocalGraph->GetGoodPlaceForNewNode();
     UK2Node_Select* SelectNode = NewObject<UK2Node_Select>(LocalGraph);
     if (!SelectNode)
         return false;
@@ -1039,17 +1021,15 @@ bool FUnrealMCPCommonUtils::SpawnSelectNode(UEdGraph* LocalGraph, bool AutoFindP
         SelectNode->PinTypeChanged(IndexPin);
     }
     NewNode = SelectNode;
-    
-    // NodeIndex = NodeList.Add(SelectNode);
     return true;
 }
 
-bool FUnrealMCPCommonUtils::SpawnSelectNode2(UEdGraph* LocalGraph, bool AutoFindPosition, FVector2D LocationOfNode, FKB_PinTypeInformations PinTypeInfo, UEdGraphNode*& NewNode)
+bool FUnrealMCPCommonUtils::SpawnSelectNode2(UEdGraph* LocalGraph, FKB_PinTypeInformations PinTypeInfo, UEdGraphNode*& NewNode)
 {
     if (!LocalGraph)
         return false;
 
-    if (!SpawnSelectNode(LocalGraph, AutoFindPosition, LocationOfNode, NewNode))
+    if (!SpawnSelectNode(LocalGraph,NewNode))
     {
         return false;
     }
@@ -1085,7 +1065,7 @@ bool FUnrealMCPCommonUtils::SpawnSelectNode2(UEdGraph* LocalGraph, bool AutoFind
     return true;
 }
 
-bool FUnrealMCPCommonUtils::SpawnEnumSwitch(UEdGraph* LocalGraph, FString EnumPath, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode)
+bool FUnrealMCPCommonUtils::SpawnEnumSwitch(UEdGraph* LocalGraph, FString EnumPath, UEdGraphNode*& NewNode)
 {
     if (!LocalGraph)
         return false;
@@ -1094,18 +1074,13 @@ bool FUnrealMCPCommonUtils::SpawnEnumSwitch(UEdGraph* LocalGraph, FString EnumPa
     if (!EnumAsset)
         return false;
 
-    FVector2D NodePosition = LocationOfNode;
-    if (AutoFindPosition)
-        NodePosition = LocalGraph->GetGoodPlaceForNewNode();
-
+    FVector2D NodePosition = LocalGraph->GetGoodPlaceForNewNode();
     UK2Node_SwitchEnum* NewSwitchEnumNode = NewObject<UK2Node_SwitchEnum>(LocalGraph);
     if (!NewSwitchEnumNode)
         return false;
 
     NewSwitchEnumNode->Enum = EnumAsset;
-
     NewSwitchEnumNode->SetFlags(RF_Transactional);
-
     LocalGraph->AddNode(NewSwitchEnumNode, true, false);
     NewSwitchEnumNode->CreateNewGuid();
     NewSwitchEnumNode->PostPlacedNewNode();
@@ -1114,21 +1089,15 @@ bool FUnrealMCPCommonUtils::SpawnEnumSwitch(UEdGraph* LocalGraph, FString EnumPa
     NewSwitchEnumNode->NodePosY = NodePosition.Y;
 
     NewNode = NewSwitchEnumNode;
-
-    // NodeIndex = NodeList.Add(NewSwitchEnumNode);
     return true;
 }
 
-bool FUnrealMCPCommonUtils::SpawnStructNode(UEdGraph* LocalGraph, UScriptStruct* StructType, bool bMakeStruct, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode)
+bool FUnrealMCPCommonUtils::SpawnStructNode(UEdGraph* LocalGraph, UScriptStruct* StructType, bool bMakeStruct, UEdGraphNode*& NewNode)
 {
     if (!LocalGraph)
         return false;
 
-    FVector2D MyPosition = LocationOfNode;
-    if (AutoFindPosition)
-        MyPosition = LocalGraph->GetGoodPlaceForNewNode();
-
-    // UEdGraphNode* NewNode = nullptr;
+    FVector2D MyPosition = LocalGraph->GetGoodPlaceForNewNode();
 
     if (bMakeStruct)
     {
@@ -1144,7 +1113,6 @@ bool FUnrealMCPCommonUtils::SpawnStructNode(UEdGraph* LocalGraph, UScriptStruct*
             MakeStructNode->AllocateDefaultPins();
             LocalGraph->AddNode(MakeStructNode);
             NewNode = MakeStructNode;
-            // NodeIndex = NodeList.Add(NewNode);
             return true;
         }
     }
@@ -1162,7 +1130,6 @@ bool FUnrealMCPCommonUtils::SpawnStructNode(UEdGraph* LocalGraph, UScriptStruct*
             BreakStructNode->AllocateDefaultPins();
             LocalGraph->AddNode(BreakStructNode);
             NewNode = BreakStructNode;
-            // NodeIndex = NodeList.Add(NewNode);
             return true;
         }
     }

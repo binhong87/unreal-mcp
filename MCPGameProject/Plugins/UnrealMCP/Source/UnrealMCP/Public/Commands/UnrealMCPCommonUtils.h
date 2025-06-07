@@ -238,21 +238,21 @@ public:
     static bool SetObjectProperty(UObject* Object, const FString& PropertyName, const TSharedPtr<FJsonValue>& Value, FString& OutErrorMessage);
 
 
-	static bool SpawnFunctionCallNode(UEdGraph* LocalGraph, FName NameOfFunction, UClass* ClassOfFunction, bool AutoFindPosition, FVector2D LocationOfFunction, UEdGraphNode*& NewNode);
+	static bool SpawnFunctionCallNode(UEdGraph* LocalGraph, FName NameOfFunction, UClass* ClassOfFunction, UEdGraphNode*& NewNode);
 
-	static bool SpawnMathNode(UEdGraph* LocalGraph, EArithmeticOperation Operation, EArithmeticDataType DataType, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode);
+	static bool SpawnMathNode(UEdGraph* LocalGraph, EArithmeticOperation Operation, EArithmeticDataType DataType, UEdGraphNode*& NewNode);
 
-	static bool SpawnSequenceNode(UEdGraph* LocalGraph, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode);
+	static bool SpawnSequenceNode(UEdGraph* LocalGraph, UEdGraphNode*& NewNode);
 
-	static bool SpawnNodeByType(UEdGraph* LocalGraph, EK2NodeType NodeType, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode);
+	static bool SpawnNodeByType(UEdGraph* LocalGraph, EK2NodeType NodeType, UEdGraphNode*& NewNode);
 
-	static bool SpawnSelectNode(UEdGraph* LocalGraph, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode);
+	static bool SpawnSelectNode(UEdGraph* LocalGraph, UEdGraphNode*& NewNode);
 
-	static bool SpawnSelectNode2(UEdGraph* LocalGraph, bool AutoFindPosition, FVector2D LocationOfNode, FKB_PinTypeInformations PinTypeInfo, UEdGraphNode*& NewNode);
+	static bool SpawnSelectNode2(UEdGraph* LocalGraph, FKB_PinTypeInformations PinTypeInfo, UEdGraphNode*& NewNode);
 
-	static bool SpawnEnumSwitch(UEdGraph* LocalGraph, FString EnumPath, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode);
+	static bool SpawnEnumSwitch(UEdGraph* LocalGraph, FString EnumPath, UEdGraphNode*& NewNode);
 
-	static bool SpawnStructNode(UEdGraph* LocalGraph, UScriptStruct* StructType, bool bMakeStruct, bool AutoFindPosition, FVector2D LocationOfNode, UEdGraphNode*& NewNode);
+	static bool SpawnStructNode(UEdGraph* LocalGraph, UScriptStruct* StructType, bool bMakeStruct, UEdGraphNode*& NewNode);
 	
 	static bool CreateBlueprintFunction(UBlueprint* BlueprintRef, FString FunctionName, TArray<FKB_FunctionPinInformations> InPins, TArray<FKB_FunctionPinInformations> OutPins,  UEdGraph*& FunctionGraph);
 

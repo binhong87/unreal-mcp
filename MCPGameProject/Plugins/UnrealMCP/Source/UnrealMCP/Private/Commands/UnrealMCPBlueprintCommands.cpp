@@ -47,10 +47,6 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintCommands::HandleCommand(const FString
     {
         return HandleCompileBlueprint(Params);
     }
-    else if (CommandType == TEXT("spawn_blueprint_actor"))
-    {
-        return HandleSpawnBlueprintActor(Params);
-    }
     else if (CommandType == TEXT("set_blueprint_property"))
     {
         return HandleSetBlueprintProperty(Params);
@@ -857,62 +853,6 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintCommands::HandleCompileBlueprint(cons
     ResultObj->SetStringField(TEXT("name"), BlueprintName);
     ResultObj->SetBoolField(TEXT("compiled"), true);
     return ResultObj;
-}
-
-TSharedPtr<FJsonObject> FUnrealMCPBlueprintCommands::HandleSpawnBlueprintActor(const TSharedPtr<FJsonObject>& Params)
-{
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
-    }
-
-    FString ActorName;
-    if (!Params->TryGetStringField(TEXT("actor_name"), ActorName))
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'actor_name' parameter"));
-    }
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-
-    // Get transform parameters
-    FVector Location(0.0f, 0.0f, 0.0f);
-    FRotator Rotation(0.0f, 0.0f, 0.0f);
-
-    if (Params->HasField(TEXT("location")))
-    {
-        Location = FUnrealMCPCommonUtils::GetVectorFromJson(Params, TEXT("location"));
-    }
-    if (Params->HasField(TEXT("rotation")))
-    {
-        Rotation = FUnrealMCPCommonUtils::GetRotatorFromJson(Params, TEXT("rotation"));
-    }
-
-    // Spawn the actor
-    UWorld* World = GEditor->GetEditorWorldContext().World();
-    if (!World)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get editor world"));
-    }
-
-    FTransform SpawnTransform;
-    SpawnTransform.SetLocation(Location);
-    SpawnTransform.SetRotation(FQuat(Rotation));
-
-    AActor* NewActor = World->SpawnActor<AActor>(Blueprint->GeneratedClass, SpawnTransform);
-    if (NewActor)
-    {
-        NewActor->SetActorLabel(*ActorName);
-        return FUnrealMCPCommonUtils::ActorToJsonObject(NewActor, true);
-    }
-
-    return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to spawn blueprint actor"));
 }
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintCommands::HandleSetBlueprintProperty(const TSharedPtr<FJsonObject>& Params)

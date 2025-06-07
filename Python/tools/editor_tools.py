@@ -78,7 +78,6 @@ def register_editor_tools(mcp: FastMCP):
     @mcp.tool()
     def spawn_actor(
         ctx: Context,
-        name: str,
         type: str,
         location: List[float] = [0.0, 0.0, 0.0],
         rotation: List[float] = [0.0, 0.0, 0.0]
@@ -87,7 +86,6 @@ def register_editor_tools(mcp: FastMCP):
         
         Args:
             ctx: The MCP context
-            name: The name to give the new actor (must be unique)
             type: The type of actor to create (e.g. StaticMeshActor, PointLight)
             location: The [x, y, z] world location to spawn at
             rotation: The [pitch, yaw, roll] rotation in degrees
@@ -105,7 +103,6 @@ def register_editor_tools(mcp: FastMCP):
             
             # Ensure all parameters are properly formatted
             params = {
-                "name": name,
                 "type": type.upper(),  # Make sure type is uppercase
                 "location": location,
                 "rotation": rotation
@@ -120,7 +117,7 @@ def register_editor_tools(mcp: FastMCP):
                 # Ensure all values are float
                 params[param_name] = [float(val) for val in param_value]
             
-            logger.info(f"Creating actor '{name}' of type '{type}' with params: {params}")
+            logger.info(f"Creating actor of type '{type}' with params: {params}")
             response = unreal.send_command("spawn_actor", params)
             
             if not response:
@@ -146,8 +143,8 @@ def register_editor_tools(mcp: FastMCP):
     @mcp.tool()
     def delete_actor(ctx: Context, name: str) -> Dict[str, Any]:
         """Delete an actor by name."""
-        from unreal_mcp_server import get_unreal_connection
-        
+
+        from unreal_mcp_server import get_unreal_connection        
         try:
             unreal = get_unreal_connection()
             if not unreal:
@@ -310,7 +307,6 @@ def register_editor_tools(mcp: FastMCP):
     def spawn_blueprint_actor(
         ctx: Context,
         blueprint_name: str,
-        actor_name: str,
         location: List[float] = [0.0, 0.0, 0.0],
         rotation: List[float] = [0.0, 0.0, 0.0]
     ) -> Dict[str, Any]:
@@ -319,7 +315,6 @@ def register_editor_tools(mcp: FastMCP):
         Args:
             ctx: The MCP context
             blueprint_name: Name of the Blueprint to spawn from
-            actor_name: Name to give the spawned actor
             location: The [x, y, z] world location to spawn at
             rotation: The [pitch, yaw, roll] rotation in degrees
             
@@ -337,7 +332,6 @@ def register_editor_tools(mcp: FastMCP):
             # Ensure all parameters are properly formatted
             params = {
                 "blueprint_name": blueprint_name,
-                "actor_name": actor_name,
                 "location": location or [0.0, 0.0, 0.0],
                 "rotation": rotation or [0.0, 0.0, 0.0]
             }

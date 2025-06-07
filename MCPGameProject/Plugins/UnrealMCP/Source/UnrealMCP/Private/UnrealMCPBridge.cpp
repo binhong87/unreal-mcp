@@ -253,15 +253,24 @@ FString UUnrealMCPBridge::ExecuteCommand(const FString& CommandType, const TShar
                 ResultJson = BlueprintCommands->HandleCommand(CommandType, Params);
             }
             // Blueprint Node Commands
-            else if (CommandType == TEXT("connect_blueprint_nodes") || 
-                     CommandType == TEXT("add_blueprint_get_self_component_reference") ||
-                     CommandType == TEXT("add_blueprint_self_reference") ||
-                     CommandType == TEXT("find_blueprint_nodes") ||
-                     CommandType == TEXT("add_blueprint_event_node") ||
-                     CommandType == TEXT("add_blueprint_input_action_node") ||
-                     CommandType == TEXT("add_blueprint_function_node") ||
-                     CommandType == TEXT("add_blueprint_get_component_node") ||
-                     CommandType == TEXT("add_blueprint_variable"))
+            else if (   CommandType == TEXT("connect_blueprint_nodes") || 
+                        CommandType == TEXT("add_blueprint_get_self_component_reference") ||
+                        CommandType == TEXT("add_blueprint_self_reference") ||
+                        CommandType == TEXT("find_blueprint_nodes") ||
+                        CommandType == TEXT("add_blueprint_event_node") ||
+                        CommandType == TEXT("add_blueprint_input_action_node") ||
+                        CommandType == TEXT("add_blueprint_function_node") ||
+                        CommandType == TEXT("add_blueprint_get_component_node") ||
+                        CommandType == TEXT("add_blueprint_variable") ||
+                        CommandType == TEXT("add_function_call_node") ||
+                        CommandType == TEXT("add_math_node") ||
+                        CommandType == TEXT("add_control_node") ||
+                        CommandType == TEXT("add_sequence_node") ||
+                        CommandType == TEXT("add_select_node") ||
+                        CommandType == TEXT("add_enum_switch_node") ||
+                        CommandType == TEXT("add_make_struct_node") ||
+                        CommandType == TEXT("add_break_struct_node")
+                        )
             {
                 ResultJson = BlueprintNodeCommands->HandleCommand(CommandType, Params);
             }

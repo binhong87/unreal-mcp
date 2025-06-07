@@ -16,6 +16,9 @@
 #include "Camera/CameraActor.h"
 #include "Kismet/GameplayStatics.h"
 #include "EdGraphSchema_K2.h"
+#include "Kismet/KismetArrayLibrary.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetStringLibrary.h"
 
 // Declare the log category
 DEFINE_LOG_CATEGORY_STATIC(LogUnrealMCP, Log, All);
@@ -1012,25 +1015,40 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddFunctionCallNo
         UE_LOG(LogTemp, Display, TEXT("Tried to find class '%s': %s"), 
                *TargetWithPrefix, TargetClass ? TEXT("Found") : TEXT("Not found"));
     }
+    // Special case handling for common classes like UGameplayStatics
+    if (!TargetClass)
+    {
+        if (TargetClassName == TEXT("UKismetSystemLibrary"))
+        {
+            TargetClass = UKismetSystemLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UGameplayStatics"))
+        {
+            TargetClass = UGameplayStatics::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UKismetStringLibrary"))
+        {
+            TargetClass = UKismetStringLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UKismetMathLibrary"))
+        {
+            TargetClass = UKismetMathLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UKismetArrayLibrary"))
+        {
+            TargetClass = UKismetArrayLibrary::StaticClass();
+        }
+    }
+    
     if (!TargetClass)
     {
         return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Failed to find target class %s"), *TargetClassName));
     }
 
     UEdGraphNode* FunctionNode = nullptr;
-    FUnrealMCPCommonUtils::SpawnFunctionCallNode(EventGraph, FName(TargetFunctionName), TargetClass, true, FVector2D(), FunctionNode);
+    FUnrealMCPCommonUtils::SpawnFunctionCallNode(EventGraph, FName(TargetFunctionName), TargetClass, FunctionNode);
     if (FunctionNode != nullptr)
-    {
-        // // Set the position of the node
-        // FunctionNode->NodePosX = NodePosition.X;
-        // FunctionNode->NodePosY = NodePosition.Y;
-        //
-        // // Add the node to the graph
-        // EventGraph->AddNode(FunctionNode, true);
-        // FunctionNode->CreateNewGuid();
-        // FunctionNode->PostPlacedNewNode();
-        // FunctionNode->AllocateDefaultPins();
-        
+    {        
         UE_LOG(LogTemp, Display, TEXT("Created function call node for %s in graph %s at position (%f, %f)"), 
                *TargetFunctionName, *EventGraph->GetName(), NodePosition.X, NodePosition.Y);
         
@@ -1090,19 +1108,9 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddMathNode(const
     EArithmeticDataType dataType = FUnrealMCPCommonUtils::GetArithmeticDataTypeFromString(DataTypeStr);
 
     UEdGraphNode* FunctionNode = nullptr;
-    FUnrealMCPCommonUtils::SpawnMathNode(EventGraph, operation, dataType, true, FVector2D(), FunctionNode);
+    FUnrealMCPCommonUtils::SpawnMathNode(EventGraph, operation, dataType, FunctionNode);
     if (FunctionNode != nullptr)
     {
-        // Set the position of the node
-        // FunctionNode->NodePosX = NodePosition.X;
-        // FunctionNode->NodePosY = NodePosition.Y;
-
-        // Add the node to the graph
-        // EventGraph->AddNode(FunctionNode, true);
-        // FunctionNode->CreateNewGuid();
-        // FunctionNode->PostPlacedNewNode();
-        // FunctionNode->AllocateDefaultPins();
-
         UE_LOG(LogTemp, Display, TEXT("Created math node for %s in graph %s"), 
                *OperationStr, *EventGraph->GetName());
 
@@ -1155,20 +1163,10 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddControlNode(co
     EK2NodeType nodeType = FUnrealMCPCommonUtils::GetK2NodeTypeFromString(ControlTypeStr);
     
     UEdGraphNode* NewNode = nullptr;
-    FUnrealMCPCommonUtils::SpawnNodeByType(EventGraph, nodeType, true, FVector2D(), NewNode);
+    FUnrealMCPCommonUtils::SpawnNodeByType(EventGraph, nodeType, NewNode);
 
     if (NewNode != nullptr)
     {
-        // Set the position of the node
-        // FunctionNode->NodePosX = NodePosition.X;
-        // FunctionNode->NodePosY = NodePosition.Y;
-
-        // Add the node to the graph
-        // EventGraph->AddNode(FunctionNode, true);
-        // FunctionNode->CreateNewGuid();
-        // FunctionNode->PostPlacedNewNode();
-        // FunctionNode->AllocateDefaultPins();
-
         UE_LOG(LogTemp, Display, TEXT("Created control node for %s in graph %s"), *ControlTypeStr, *EventGraph->GetName());
 
         // Mark the blueprint as modified
@@ -1213,20 +1211,10 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddSequenceNode(c
     }
     
     UEdGraphNode* NewNode = nullptr;
-    FUnrealMCPCommonUtils::SpawnSequenceNode(EventGraph, true, FVector2D(), NewNode);
+    FUnrealMCPCommonUtils::SpawnSequenceNode(EventGraph, NewNode);
 
     if (NewNode != nullptr)
     {
-        // Set the position of the node
-        // FunctionNode->NodePosX = NodePosition.X;
-        // FunctionNode->NodePosY = NodePosition.Y;
-
-        // Add the node to the graph
-        // EventGraph->AddNode(FunctionNode, true);
-        // FunctionNode->CreateNewGuid();
-        // FunctionNode->PostPlacedNewNode();
-        // FunctionNode->AllocateDefaultPins();
-
         UE_LOG(LogTemp, Display, TEXT("Created sequence node in graph %s"), *EventGraph->GetName());
 
         // Mark the blueprint as modified
@@ -1278,20 +1266,10 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddSelectNode(con
     // ESelectPinType PinType = FUnrealMCPCommonUtils::GetSelectPinTypeFromString(PinTypeStr);
 
     UEdGraphNode* NewNode = nullptr;
-    FUnrealMCPCommonUtils::SpawnSelectNode(EventGraph, true, FVector2D(), NewNode);
+    FUnrealMCPCommonUtils::SpawnSelectNode(EventGraph, NewNode);
 
     if (NewNode != nullptr)
     {
-        // Set the position of the node
-        // FunctionNode->NodePosX = NodePosition.X;
-        // FunctionNode->NodePosY = NodePosition.Y;
-
-        // Add the node to the graph
-        // EventGraph->AddNode(FunctionNode, true);
-        // FunctionNode->CreateNewGuid();
-        // FunctionNode->PostPlacedNewNode();
-        // FunctionNode->AllocateDefaultPins();
-
         UE_LOG(LogTemp, Display, TEXT("Created select node in graph %s"), *EventGraph->GetName());
 
         // Mark the blueprint as modified
@@ -1341,20 +1319,10 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddEnumSwitchNode
         return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'enum_path' parameter"));
     }
     UEdGraphNode* NewNode = nullptr;
-    FUnrealMCPCommonUtils::SpawnEnumSwitch(EventGraph, EnumPath, true, FVector2D(), NewNode);
+    FUnrealMCPCommonUtils::SpawnEnumSwitch(EventGraph, EnumPath, NewNode);
 
     if (NewNode != nullptr)
     {
-        // Set the position of the node
-        // FunctionNode->NodePosX = NodePosition.X;
-        // FunctionNode->NodePosY = NodePosition.Y;
-
-        // Add the node to the graph
-        // EventGraph->AddNode(FunctionNode, true);
-        // FunctionNode->CreateNewGuid();
-        // FunctionNode->PostPlacedNewNode();
-        // FunctionNode->AllocateDefaultPins();
-
         UE_LOG(LogTemp, Display, TEXT("Created enum switch node for %s in graph %s"), *EnumPath, *EventGraph->GetName());
 
         // Mark the blueprint as modified
@@ -1408,20 +1376,10 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddMakeStructNode
         return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Failed to load struct at path %s"), *StructPath));
     }
     UEdGraphNode* NewNode = nullptr;
-    FUnrealMCPCommonUtils::SpawnStructNode(EventGraph, StructType, true, true, FVector2D(), NewNode);
+    FUnrealMCPCommonUtils::SpawnStructNode(EventGraph, StructType, true, NewNode);
 
     if (NewNode != nullptr)
     {
-        // Set the position of the node
-        // FunctionNode->NodePosX = NodePosition.X;
-        // FunctionNode->NodePosY = NodePosition.Y;
-
-        // Add the node to the graph
-        // EventGraph->AddNode(FunctionNode, true);
-        // FunctionNode->CreateNewGuid();
-        // FunctionNode->PostPlacedNewNode();
-        // FunctionNode->AllocateDefaultPins();
-
         UE_LOG(LogTemp, Display, TEXT("Created make struct node for %s in graph %s"), *StructPath, *EventGraph->GetName());
 
         // Mark the blueprint as modified
@@ -1475,7 +1433,7 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAdBreakStructNode
         return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Failed to load struct at path %s"), *StructPath));
     }
     UEdGraphNode* NewNode = nullptr;
-    FUnrealMCPCommonUtils::SpawnStructNode(EventGraph, StructType, false, true, FVector2D(), NewNode);
+    FUnrealMCPCommonUtils::SpawnStructNode(EventGraph, StructType, false, NewNode);
 
     if (NewNode != nullptr)
     {
