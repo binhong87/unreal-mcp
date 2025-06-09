@@ -270,6 +270,13 @@ public:
 
 	static EK2NodeType GetK2NodeTypeFromString(const FString& NodeTypeString);
 
+	static bool SpawnStandardMacrosNode(UEdGraph* LocalGraph, FName MacroName, UEdGraphNode*& NewNode);
+	
+	static UEdGraph* FindMacroGraphByName(UBlueprint* Blueprint, const FName MacroName);
+	
+	static bool SpawnMacroInstanceNode(UEdGraph* LocalGraph, UEdGraph* MacroGraph, UEdGraphNode*& NewNode);
+
+
 	// static FKB_PinTypeInformations GetPinTypeFromString(const FString& PinTypeString);
 
 };

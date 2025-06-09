@@ -269,7 +269,10 @@ FString UUnrealMCPBridge::ExecuteCommand(const FString& CommandType, const TShar
                         CommandType == TEXT("add_select_node") ||
                         CommandType == TEXT("add_enum_switch_node") ||
                         CommandType == TEXT("add_make_struct_node") ||
-                        CommandType == TEXT("add_break_struct_node")
+                        CommandType == TEXT("add_break_struct_node") ||
+                        CommandType == TEXT("find_event_node_by_name") ||
+                        CommandType == TEXT("get_node_pins") ||
+                        CommandType == TEXT("set_node_pin_default_value")
                         )
             {
                 ResultJson = BlueprintNodeCommands->HandleCommand(CommandType, Params);
@@ -334,7 +337,7 @@ FString UUnrealMCPBridge::ExecuteCommand(const FString& CommandType, const TShar
         }
         
         FString ResultString;
-        TSharedRef<TJsonWriter<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>> Writer = TJsonWriterFactory<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>::Create(&ResultString);
+        TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&ResultString);
         FJsonSerializer::Serialize(ResponseJson.ToSharedRef(), Writer);
         Promise.SetValue(ResultString);
     });

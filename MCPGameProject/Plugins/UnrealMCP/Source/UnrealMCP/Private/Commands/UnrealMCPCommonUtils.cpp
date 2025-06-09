@@ -29,9 +29,11 @@
 #include "K2Node_FunctionEntry.h"
 #include "K2Node_FunctionResult.h"
 #include "K2Node_IfThenElse.h"
+#include "K2Node_MacroInstance.h"
 #include "K2Node_MakeStruct.h"
 #include "K2Node_Select.h"
 #include "K2Node_SwitchEnum.h"
+#include "K2Node_SwitchInteger.h"
 #include "K2Node_SwitchString.h"
 #include "Dom/JsonObject.h"
 #include "Dom/JsonValue.h"
@@ -388,8 +390,7 @@ bool FUnrealMCPCommonUtils::ConnectGraphNodes(UEdGraph* Graph, UEdGraphNode* Sou
     
     if (SourcePin && TargetPin)
     {
-        SourcePin->MakeLinkTo(TargetPin);
-        return true;
+        return Graph->GetSchema()->TryCreateConnection(SourcePin, TargetPin);
     }
     
     return false;
@@ -954,14 +955,13 @@ bool FUnrealMCPCommonUtils::SpawnNodeByType(UEdGraph* LocalGraph, EK2NodeType No
         NewCreatedNode = NewObject<UK2Node_IfThenElse>(LocalGraph);
         break;
     case EK2NodeType::K2NodeType_For:
-        // NewCreatedNode = NewObject<UK2Node_ForEachLoop>(LocalGraph);
-        return false;
+        SpawnStandardMacrosNode(LocalGraph, "ForLoop", NewNode);
         break;
     case EK2NodeType::K2NodeType_Foreach:
-        return false;
+        SpawnStandardMacrosNode(LocalGraph, "ForEachLoop", NewNode);
         break;
     case EK2NodeType::K2NodeType_While:
-        return false;
+        SpawnStandardMacrosNode(LocalGraph, "WhileLoop", NewNode);
         break;
     case EK2NodeType::K2NodeType_Do:
         return false;
@@ -970,8 +970,10 @@ bool FUnrealMCPCommonUtils::SpawnNodeByType(UEdGraph* LocalGraph, EK2NodeType No
         NewCreatedNode = NewObject<UK2Node_SwitchString>(LocalGraph);
         break;
     case K2NodeType_SwitchInt:
+        NewCreatedNode = NewObject<UK2Node_SwitchInteger>(LocalGraph);
         break;
     case K2NodeType_SwitchEnum:
+        NewCreatedNode = NewObject<UK2Node_SwitchEnum>(LocalGraph);
         break;
     }
     
@@ -1689,6 +1691,62 @@ EK2NodeType FUnrealMCPCommonUtils::GetK2NodeTypeFromString(const FString& NodeTy
         return EK2NodeType::K2NodeType_SwitchEnum;
     else
         return EK2NodeType::K2NodeType_If; // Default case
+}
+
+bool FUnrealMCPCommonUtils::SpawnStandardMacrosNode(UEdGraph* LocalGraph, FName MacroName, UEdGraphNode*& NewNode)
+{
+    UBlueprint* StandardMacros = LoadObject<UBlueprint>(nullptr, TEXT("/Engine/EditorBlueprintResources/StandardMacros.StandardMacros"));
+    if (!StandardMacros)
+    {
+        return false;
+    }
+    UEdGraph* ForEachMacroGraph = FindMacroGraphByName(StandardMacros, MacroName);
+    if (!ForEachMacroGraph)
+    {
+        return false;
+    }
+
+    if (!SpawnMacroInstanceNode(LocalGraph, ForEachMacroGraph, NewNode))
+    {
+        return false;
+    }
+    return true;
+}
+
+UEdGraph* FUnrealMCPCommonUtils::FindMacroGraphByName(UBlueprint* Blueprint, const FName MacroName)
+{
+    for (UEdGraph* Graph : Blueprint->MacroGraphs)
+    {
+        if (Graph && Graph->GetFName() == MacroName)
+        {
+            return Graph;
+        }
+    }
+    return nullptr;
+}
+
+bool FUnrealMCPCommonUtils::SpawnMacroInstanceNode(UEdGraph* LocalGraph, UEdGraph* MacroGraph, UEdGraphNode*& NewNode)
+{
+    UK2Node_MacroInstance* NewMacroNode = NewObject<UK2Node_MacroInstance>(LocalGraph);
+    if (!NewMacroNode)
+        return false;
+
+    FVector2D NodePosition = LocalGraph->GetGoodPlaceForNewNode();
+
+    NewMacroNode->SetFlags(RF_Transactional);
+
+    NewMacroNode->SetMacroGraph(MacroGraph);    
+
+    LocalGraph->AddNode(NewMacroNode, true, false);
+    NewMacroNode->CreateNewGuid();
+    NewMacroNode->PostPlacedNewNode();
+    NewMacroNode->AllocateDefaultPins();
+    NewMacroNode->NodePosX = NodePosition.X;
+    NewMacroNode->NodePosY = NodePosition.Y;
+
+    NewNode = NewMacroNode;
+
+    return true;
 }
 
 #undef LOCTEXT_NAMESPACE

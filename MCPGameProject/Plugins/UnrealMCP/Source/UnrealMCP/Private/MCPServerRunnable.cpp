@@ -92,9 +92,9 @@ uint32 FMCPServerRunnable::Run()
                                 
                                 // Send response
                                 int32 BytesSent = 0;
-                                char* data = TCHAR_TO_UTF8(*Response);
-                                int length = strlen(data);
-                                if (!ClientSocket->Send((uint8*)data, length, BytesSent))
+                                auto data = StringCast<UTF8CHAR>(*Response);
+                                int length = data.Length();
+                                if (!ClientSocket->Send((uint8*)data.Get(), length, BytesSent))
                                 {
                                     UE_LOG(LogTemp, Warning, TEXT("MCPServerRunnable: Failed to send response"));
                                 }

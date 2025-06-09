@@ -124,9 +124,9 @@ def register_blueprint_node_tools(mcp: FastMCP):
         ctx: Context,
         blueprint_name: str,
         source_node_id: str,
-        source_pin: str,
+        source_pin_name: str,
         target_node_id: str,
-        target_pin: str
+        target_pin_name: str
     ) -> Dict[str, Any]:
         """
         Connect two nodes in a Blueprint's event graph.
@@ -134,10 +134,10 @@ def register_blueprint_node_tools(mcp: FastMCP):
         Args:
             blueprint_name: Name of the target Blueprint
             source_node_id: ID of the source node
-            source_pin: Name of the output pin on the source node
+            source_pin_name: Name of the output pin on the source node
             target_node_id: ID of the target node
-            target_pin: Name of the input pin on the target node
-            
+            target_pin_name: Name of the input pin on the target node
+
         Returns:
             Response indicating success or failure
         """
@@ -147,9 +147,9 @@ def register_blueprint_node_tools(mcp: FastMCP):
             params = {
                 "blueprint_name": blueprint_name,
                 "source_node_id": source_node_id,
-                "source_pin": source_pin,
+                "source_pin_name": source_pin_name,
                 "target_node_id": target_node_id,
-                "target_pin": target_pin
+                "target_pin_name": target_pin_name
             }
             
             unreal = get_unreal_connection()
@@ -816,5 +816,151 @@ def register_blueprint_node_tools(mcp: FastMCP):
             
         except Exception as e:
             error_msg = f"Error adding break struct node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+        
+    @mcp.tool()
+    def find_event_node_by_name(
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str,
+        event_name: str
+    ) -> Dict[str, Any]:
+        """
+        Find an event node in a Blueprint's event graph by its name.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            event_name: Name of the event to find (e.g., 'ReceiveBeginPlay', 'ReceiveTick')
+        Returns:
+            Response containing the node ID and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name,
+                "event_name": event_name
+            }
+            
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Finding event node '{event_name}' in blueprint '{blueprint_name}'")
+            response = unreal.send_command("find_event_node_by_name", params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Event node find response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error finding event node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+        
+    @mcp.tool()
+    def get_node_pins(
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str,
+        node_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get the pins of a specific node in a Blueprint's event graph or function graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            node_id: ID of the node to get pins for
+            
+        Returns:
+            Response containing the list of pins and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name,
+                "node_id": node_id
+            }
+            
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Getting pins for node '{node_id}' in blueprint '{blueprint_name}'")
+            response = unreal.send_command("get_node_pins", params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Node pins response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error getting node pins: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+        
+    @mcp.tool()
+    def set_node_pin_default_value(
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str,
+        node_id: str,
+        pin_name: str,
+        default_value: Any
+    ) -> Dict[str, Any]:
+        """
+        Set the default value of a specific pin on a node in a Blueprint's event graph or function graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            node_id: ID of the node containing the pin
+            pin_name: Name of the pin to set the default value for
+            default_value: The value to set as the default
+            
+        Returns:
+            Response indicating success or failure
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name,
+                "node_id": node_id,
+                "pin_name": pin_name,
+                "default_value": default_value
+            }
+            
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Setting default value for pin '{pin_name}' on node '{node_id}' in blueprint '{blueprint_name}'")
+            response = unreal.send_command("set_node_pin_default_value", params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Set pin default value response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error setting pin default value: {e}"
             logger.error(error_msg)
             return {"success": False, "message": error_msg}

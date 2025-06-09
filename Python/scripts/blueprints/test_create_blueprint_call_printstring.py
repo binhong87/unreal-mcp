@@ -82,8 +82,7 @@ def main():
                     "blueprint_name": "BP_PrintString",
                     "function_or_graph_name": "EventGraph",
                     "target_class": "UKismetSystemLibrary",
-                    "target_function": "PrintString",
-                    "params": "Hello, Unreal MCP!"
+                    "target_function": "PrintString"
                 }    
         response = send_command(sock, "add_function_call_node", command_params)
 
@@ -91,6 +90,93 @@ def main():
             logger.error(f"Failed to add function call node: {response}")
         else:
             logger.info(f"Function call node added successfully: {response}")
+
+        node_id_printstring = response.get("result").get("node_id")
+
+        set_defaultvalue_params = {
+            "blueprint_name": "BP_PrintString",
+            "function_or_graph_name": "EventGraph",
+            "node_id": node_id_printstring,
+            "pin_name": "InString",
+            "default_value": "Hello, Unreal MCP!"
+        }
+
+        response = send_command(sock, "set_node_pin_default_value", set_defaultvalue_params)
+        if not response or response.get("status") != "success":
+            logger.error(f"Failed to set default value for print string node: {response}")
+            return
+        logger.info(f"Default value set successfully for print string node: {response}")
+
+        set_defaultvalue_params = {
+            "blueprint_name": "BP_PrintString",
+            "function_or_graph_name": "EventGraph",
+            "node_id": node_id_printstring,
+            "pin_name": "bPrintToLog",
+            "default_value": "false"
+        }
+
+        response = send_command(sock, "set_node_pin_default_value", set_defaultvalue_params)
+        if not response or response.get("status") != "success":
+            logger.error(f"Failed to set default value for print string node: {response}")
+            return
+        logger.info(f"Default value set successfully for print string node: {response}")
+
+        # Find the event node for ReceiveBeginPlay
+        find_event_params = {
+            "blueprint_name": "BP_PrintString",
+            "function_or_graph_name": "EventGraph",
+            "event_name": "ReceiveBeginPlay"
+        }
+        response = send_command(sock, "find_event_node_by_name", find_event_params)
+        if not response or response.get("status") != "success":
+            logger.error(f"Failed to find event node: {response}")
+            return
+
+        logger.info(f"Event node found successfully: {response}")
+
+        node_id_eventstart = response.get("result").get("node_id")
+
+        get_pin_params1 = {
+            "blueprint_name": "BP_PrintString",
+            "function_or_graph_name": "EventGraph",
+            "node_id": node_id_eventstart
+        }
+
+        response = send_command(sock, "get_node_pins", get_pin_params1)
+        if not response or response.get("status") != "success":
+            logger.error(f"Failed to get node pins: {response}")
+            return
+
+        logger.info(f"Node pins retrieved successfully: {response}")
+
+        get_pin_params2 = {
+            "blueprint_name": "BP_PrintString",
+            "function_or_graph_name": "EventGraph",
+            "node_id": node_id_printstring
+        }
+
+        response = send_command(sock, "get_node_pins", get_pin_params2)
+        if not response or response.get("status") != "success":
+            logger.error(f"Failed to get node pins for print string: {response}")
+            return
+        logger.info(f"Node pins for print string retrieved successfully: {response}")
+        # Connect the event node to the print string node
+
+        connect_params = {
+            "blueprint_name": "BP_PrintString",
+            "function_or_graph_name": "EventGraph",
+            "source_node_id": node_id_eventstart,
+            "target_node_id": node_id_printstring,
+            "source_pin_name": "then",
+            "target_pin_name": "execute"
+        }
+
+        response = send_command(sock, "connect_blueprint_nodes", connect_params)
+        if not response or response.get("status") != "success":
+            logger.error(f"Failed to connect nodes: {response}")
+            return
+
+        logger.info(f"Nodes connected successfully: {response}")
 
         compile_params = {
             "blueprint_name": "BP_PrintString"
