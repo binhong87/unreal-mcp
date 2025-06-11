@@ -191,6 +191,19 @@ def main():
             
         logger.info("Blueprint compiled successfully!")
 
+
+        get_nodes_params = {
+            "blueprint_name": "BP_PrintString",
+            "function_or_graph_name": "EventGraph"
+        }
+
+        response = send_command(sock, "get_all_nodes", get_nodes_params)
+        if not response or response.get("status") != "success":
+            logger.error(f"Failed to get all nodes: {response}")
+            return
+
+        logger.info(f"All nodes retrieved successfully: {response}")
+
     except Exception as e:
         logger.error(f"Error: {e}")
         sys.exit(1)

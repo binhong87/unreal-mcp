@@ -38,4 +38,5 @@ private:
     
     TSharedPtr<FJsonObject> HandleConnectBlueprintNodes(const TSharedPtr<FJsonObject>& Params);
     TSharedPtr<FJsonObject> HandleSetNodePinDefaultValue(const TSharedPtr<FJsonObject>& Params);
+    TSharedPtr<FJsonObject> HandleGetAllNodes(const TSharedPtr<FJsonObject>& Params);
 }; 

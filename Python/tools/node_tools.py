@@ -964,3 +964,48 @@ def register_blueprint_node_tools(mcp: FastMCP):
             error_msg = f"Error setting pin default value: {e}"
             logger.error(error_msg)
             return {"success": False, "message": error_msg}
+        
+    @mcp.tool()
+    def get_all_nodes(
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str
+    ) -> Dict[str, Any]:
+        """
+        Get all nodes in a Blueprint's event graph or function graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            
+        Returns:
+            Response containing the list of nodes and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name
+            }
+            
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Getting all nodes in blueprint '{blueprint_name}'")
+            response = unreal.send_command("get_all_nodes", params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"All nodes response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error getting all nodes: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+    
