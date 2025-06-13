@@ -120,13 +120,13 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleCommand(const FSt
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddBlueprintGetSelfComponentReference(const TSharedPtr<FJsonObject>& Params)
 {
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
+        return ErrorResponse;
     }
-
     FString ComponentName;
     if (!Params->TryGetStringField(TEXT("component_name"), ComponentName))
     {
@@ -139,21 +139,6 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddBlueprintGetSe
     {
         NodePosition = FUnrealMCPCommonUtils::GetVector2DFromJson(Params, TEXT("node_position"));
     }
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindOrCreateEventGraph(Blueprint);
-    if (!EventGraph)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
-    }
-    
     // We'll skip component verification since the GetAllNodes API may have changed in UE5.5
     
     // Create the variable get node directly
@@ -190,13 +175,13 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddBlueprintGetSe
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddBlueprintEvent(const TSharedPtr<FJsonObject>& Params)
 {
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
+        return ErrorResponse;
     }
-
     FString EventName;
     if (!Params->TryGetStringField(TEXT("event_name"), EventName))
     {
@@ -208,20 +193,6 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddBlueprintEvent
     if (Params->HasField(TEXT("node_position")))
     {
         NodePosition = FUnrealMCPCommonUtils::GetVector2DFromJson(Params, TEXT("node_position"));
-    }
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindOrCreateEventGraph(Blueprint);
-    if (!EventGraph)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
     }
 
     // Create the event node
@@ -899,44 +870,24 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleFindBlueprintNode
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddFunctionCallNode(const TSharedPtr<FJsonObject>& Params)
 {
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
+        return ErrorResponse;
     }
-
-    FString GraphName;
-    if (!Params->TryGetStringField(TEXT("function_or_graph_name"), GraphName))
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
-    }
-
     // Get position parameters (optional)
     FVector2D NodePosition(0.0f, 0.0f);
     if (Params->HasField(TEXT("node_position")))
     {
         NodePosition = FUnrealMCPCommonUtils::GetVector2DFromJson(Params, TEXT("node_position"));
     }
-
     // Check for target parameter (optional)
     FString TargetClassName;
     Params->TryGetStringField(TEXT("target_class"), TargetClassName);
     FString TargetFunctionName;
     Params->TryGetStringField(TEXT("target_function"), TargetFunctionName);
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
-    if (!EventGraph)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
-    }
 
     // Try to find the target class
     UClass* TargetClass = nullptr;
@@ -1006,32 +957,13 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddFunctionCallNo
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddMathNode(const TSharedPtr<FJsonObject>& Params)
 {
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
+        return ErrorResponse;
     }
-
-    FString GraphName;
-    if (!Params->TryGetStringField(TEXT("function_or_graph_name"), GraphName))
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
-    }
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
-    if (!EventGraph)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
-    }
-
     FString OperationStr;
     if (!Params->TryGetStringField(TEXT("operation"), OperationStr))
     {
@@ -1068,32 +1000,13 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddMathNode(const
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddControlNode(const TSharedPtr<FJsonObject>& Params)
 {
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
+        return ErrorResponse;
     }
-
-    FString GraphName;
-    if (!Params->TryGetStringField(TEXT("function_or_graph_name"), GraphName))
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
-    }
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
-    if (!EventGraph)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
-    }
-
     FString ControlTypeStr;
     if (!Params->TryGetStringField(TEXT("control_type"), ControlTypeStr))
     {
@@ -1123,32 +1036,13 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddControlNode(co
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddSequenceNode(const TSharedPtr<FJsonObject>& Params)
 {
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
+        return ErrorResponse;
     }
-
-    FString GraphName;
-    if (!Params->TryGetStringField(TEXT("function_or_graph_name"), GraphName))
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
-    }
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
-    if (!EventGraph)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
-    }
-    
     UEdGraphNode* NewNode = nullptr;
     FUnrealMCPCommonUtils::SpawnSequenceNode(EventGraph, NewNode);
 
@@ -1171,32 +1065,13 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddSequenceNode(c
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddSelectNode(const TSharedPtr<FJsonObject>& Params)
 {
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
+        return ErrorResponse;
     }
-
-    FString GraphName;
-    if (!Params->TryGetStringField(TEXT("function_or_graph_name"), GraphName))
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
-    }
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
-    if (!EventGraph)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
-    }
-
     // FString PinTypeStr;
     // if (!Params->TryGetStringField(TEXT("pin_type"), PinTypeStr))
     // {
@@ -1226,32 +1101,13 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddSelectNode(con
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddEnumSwitchNode(const TSharedPtr<FJsonObject>& Params)
 {
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
+        return ErrorResponse;
     }
-
-    FString GraphName;
-    if (!Params->TryGetStringField(TEXT("function_or_graph_name"), GraphName))
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
-    }
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
-    if (!EventGraph)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
-    }
-
     FString EnumPath;
     if (!Params->TryGetStringField(TEXT("enum_path"), EnumPath))
     {
@@ -1279,30 +1135,12 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddEnumSwitchNode
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddMakeStructNode(const TSharedPtr<FJsonObject>& Params)
 {
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
-    }
-
-    FString GraphName;
-    if (!Params->TryGetStringField(TEXT("function_or_graph_name"), GraphName))
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
-    }
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
-    if (!EventGraph)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
+        return ErrorResponse;
     }
     FString StructPath;
     if (!Params->TryGetStringField(TEXT("struct_path"), StructPath))
@@ -1336,30 +1174,12 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddMakeStructNode
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddBreakStructNode(const TSharedPtr<FJsonObject>& Params)
 {
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
-    }
-
-    FString GraphName;
-    if (!Params->TryGetStringField(TEXT("function_or_graph_name"), GraphName))
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
-    }
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
-    if (!EventGraph)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
+        return ErrorResponse;
     }
     FString StructPath;
     if (!Params->TryGetStringField(TEXT("struct_path"), StructPath))
@@ -1393,29 +1213,12 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddBreakStructNod
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleFindEventNodeByName(const TSharedPtr<FJsonObject>& Params)
 {
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
-    }
-    FString GraphName;
-    if (!Params->TryGetStringField(TEXT("function_or_graph_name"), GraphName))
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
-    }
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
-    if (!EventGraph)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
+        return ErrorResponse;
     }
     FString EventName;
     if (!Params->TryGetStringField(TEXT("event_name"), EventName))
@@ -1441,29 +1244,12 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleFindEventNodeByNa
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleGetNodePins(const TSharedPtr<FJsonObject>& Params)
 {
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
-    }
-    FString GraphName;
-    if (!Params->TryGetStringField(TEXT("function_or_graph_name"), GraphName))
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
-    }
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
-    if (!EventGraph)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
+        return ErrorResponse;
     }
     FString NodeIdStr;
     if (!Params->TryGetStringField(TEXT("node_id"), NodeIdStr))
@@ -1489,8 +1275,19 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleGetNodePins(const
         PinObj->SetStringField(TEXT("pin_guid"), Pin->PinId.ToString());
         PinObj->SetStringField(TEXT("pin_name"), Pin->PinName.ToString());
         PinObj->SetStringField(TEXT("pin_type"), Pin->PinType.PinCategory.ToString());
-        PinObj->SetBoolField(TEXT("is_input"), Pin->Direction == EGPD_Input);
-        PinObj->SetBoolField(TEXT("is_output"), Pin->Direction == EGPD_Output);
+        if (!Pin->PinType.PinSubCategory.IsNone())
+        {
+            PinObj->SetStringField(TEXT("pin_sub_category"), Pin->PinType.PinSubCategory.ToString());
+        }
+        PinObj->SetStringField(TEXT("pin_direction"), Pin->Direction == EGPD_Input ? TEXT("input") : TEXT("output"));
+        if (!Pin->DefaultValue.IsEmpty())
+        {
+            PinObj->SetStringField(TEXT("default_value"), Pin->DefaultValue);
+        }
+        if (Pin->DefaultObject)
+        {
+            PinObj->SetStringField(TEXT("default_object"), Pin->DefaultObject->GetPathName());
+        }
         PinArray.Add(MakeShared<FJsonValueObject>(PinObj));
     }
     ResultObj->SetArrayField(TEXT("pins"), PinArray);
@@ -1499,16 +1296,12 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleGetNodePins(const
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleConnectBlueprintNodes(const TSharedPtr<FJsonObject>& Params)
 {
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
-    }
-    FString GraphName;
-    if (!Params->TryGetStringField(TEXT("function_or_graph_name"), GraphName))
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
+        return ErrorResponse;
     }
     FString SourceNodeId;
     if (!Params->TryGetStringField(TEXT("source_node_id"), SourceNodeId))
@@ -1529,19 +1322,6 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleConnectBlueprintN
     if (!Params->TryGetStringField(TEXT("target_pin_name"), TargetPinName))
     {
         return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'target_pin_name' parameter"));
-    }
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
-    if (!EventGraph)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
     }
 
     // Find the nodes
@@ -1581,29 +1361,12 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleConnectBlueprintN
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleSetNodePinDefaultValue(const TSharedPtr<FJsonObject>& Params)
 {
-    // Get required parameters
-    FString BlueprintName;
-    if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
-    }
-    FString GraphName;
-    if (!Params->TryGetStringField(TEXT("function_or_graph_name"), GraphName))
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
-    }
-
-    // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
-    if (!Blueprint)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
-    }
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
-    if (!EventGraph)
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
+        return ErrorResponse;
     }
     FString NodeIdStr;
     if (!Params->TryGetStringField(TEXT("node_id"), NodeIdStr))
@@ -1647,34 +1410,48 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleSetNodePinDefault
     
 }
 
-TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleGetAllNodes(const TSharedPtr<FJsonObject>& Params)
+bool FUnrealMCPBlueprintNodeCommands::GetEventGraphFromParams(const TSharedPtr<FJsonObject>& Params, UBlueprint*& Blueprint, UEdGraph*& EventGraph, TSharedPtr<FJsonObject>& ErrorResponse)
 {
     // Get required parameters
     FString BlueprintName;
     if (!Params->TryGetStringField(TEXT("blueprint_name"), BlueprintName))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
+        ErrorResponse = FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'blueprint_name' parameter"));
+        return false;
     }
     FString GraphName;
     if (!Params->TryGetStringField(TEXT("function_or_graph_name"), GraphName))
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
+        ErrorResponse = FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'function_or_graph_name' parameter"));
+        return false;
     }
 
     // Find the blueprint
-    UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
+    Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
     if (!Blueprint)
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
+        ErrorResponse = FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
+        return false;
     }
-    // Get the event graph
-    UEdGraph* EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
+    EventGraph = FUnrealMCPCommonUtils::FindBlueprintGraphByName(Blueprint, GraphName);
     if (!EventGraph)
     {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
+        ErrorResponse = FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Failed to get event graph"));
+        return false;
+    }
+    return true;
+}
+
+TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleGetAllNodes(const TSharedPtr<FJsonObject>& Params)
+{
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
+    {
+        return ErrorResponse;
     }
     TArray<TObjectPtr<UEdGraphNode>> AllNodes = EventGraph->Nodes;
-    // EventGraph->Serialize()
     TArray<TSharedPtr<FJsonValue>> NodeArray;
     for (TObjectPtr<UEdGraphNode> Node : AllNodes)
     {
