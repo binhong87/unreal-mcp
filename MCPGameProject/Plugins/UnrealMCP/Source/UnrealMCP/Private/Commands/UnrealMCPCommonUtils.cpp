@@ -39,6 +39,7 @@
 #include "Dom/JsonValue.h"
 #include "GameFramework/SaveGame.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet2/KismetEditorUtilities.h"
 
 
 #define LOCTEXT_NAMESPACE "FUnrealMCPModule"
@@ -1979,6 +1980,93 @@ EVariableType FUnrealMCPCommonUtils::KBL_RevertedPinVarConversion(FName PinCateg
             return EVariableType::VarType_Text;
         }
         return EVariableType::VarType_Integer;
+}
+
+bool FUnrealMCPCommonUtils::CreateLocalVariable(UBlueprint* Blueprint, UEdGraph* LocalGraph, FKB_FunctionPinInformations Var)
+{
+    UBlueprint* LocalBlueprint = Blueprint;
+    if (!LocalBlueprint)
+        return false;
+    if (!LocalGraph)
+        return false;
+
+    EVariablePinType Banana = Var.VarType;
+    EPinContainerType LocalContainerType = EPinContainerType::None;
+    switch (Banana) {
+    case EVariablePinType::Single:
+        LocalContainerType = EPinContainerType::None;
+        break;
+    case EVariablePinType::Array:
+        LocalContainerType = EPinContainerType::Array;
+        break;
+    case EVariablePinType::Set:
+        LocalContainerType = EPinContainerType::Set;
+        break;
+    case EVariablePinType::Map:
+        LocalContainerType = EPinContainerType::Map;
+        break;
+    }
+
+    FName LocalPinCategory = "None";
+    FName LocalPinSubCategory = "None";
+    TWeakObjectPtr<UObject> LocalPinSubObject = nullptr;
+
+    if (Var.UseCustomVarType)
+    {
+        if (!Var.CustomVarTypePath.IsEmpty() && !Var.CustomVarTypeName.IsEmpty())
+        {
+            UObject* CustomType = LoadObject<UObject>(nullptr, *Var.CustomVarTypePath);
+            if (CustomType)
+            {
+                if (UEnum* CustomEnum = Cast<UEnum>(CustomType))
+                {
+                    LocalPinCategory = "byte";
+                    LocalPinSubCategory = "None";
+                    LocalPinSubObject = CustomEnum;
+                }
+                else if (UScriptStruct* CustomStruct = Cast<UScriptStruct>(CustomType))
+                {
+                    LocalPinCategory = "struct";
+                    LocalPinSubCategory = "None";
+                    LocalPinSubObject = CustomStruct;
+                }
+            }
+        }
+    }
+    else
+    {
+        PinVarConversionLocal(Var.Type, LocalPinCategory, LocalPinSubCategory, LocalPinSubObject);
+    }
+
+    FEdGraphPinType MyPinType;
+    MyPinType.bIsConst = false;
+    MyPinType.bIsReference = false;
+    MyPinType.bIsUObjectWrapper = false;
+    MyPinType.bIsWeakPointer = false;
+    MyPinType.ContainerType = LocalContainerType;
+    MyPinType.PinCategory = LocalPinCategory;
+    MyPinType.PinSubCategory = LocalPinSubCategory;
+    MyPinType.PinSubCategoryObject = LocalPinSubObject;
+    MyPinType.PinSubCategoryMemberReference.MemberName = "None";
+    MyPinType.PinValueType.bTerminalIsConst = false;
+    MyPinType.PinValueType.bTerminalIsUObjectWrapper = false;
+    MyPinType.PinValueType.bTerminalIsWeakPointer = false;
+    MyPinType.PinValueType.TerminalCategory = "None";
+    MyPinType.PinValueType.TerminalSubCategory = "None";
+
+    if (LocalContainerType == EPinContainerType::Map) {
+        MyPinType.PinCategory = "int";    
+        MyPinType.PinValueType.TerminalCategory = "string";    
+        MyPinType.PinValueType.TerminalSubCategory = "None";
+        MyPinType.PinValueType.TerminalSubCategoryObject = nullptr;
+        MyPinType.PinSubCategory = "None";
+        MyPinType.PinSubCategoryObject = nullptr;
+    }
+
+    FBlueprintEditorUtils::AddLocalVariable(LocalBlueprint, LocalGraph, Var.Name, MyPinType, FString());
+    FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(LocalBlueprint);
+    FKismetEditorUtilities::CompileBlueprint(LocalBlueprint);
+    return true;
 }
 
 #undef LOCTEXT_NAMESPACE

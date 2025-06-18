@@ -283,6 +283,7 @@ public:
 	static TArray<FBPVariableDescription> GetLocalVariablesForGraph(const UEdGraph* Graph);
 	static TArray<FBPVariableDescription> GetGlobalVariablesForBlueprint(const UBlueprint* Blueprint);
 	static EVariableType KBL_RevertedPinVarConversion(FName PinCategory, FName PinSubCategory, TWeakObjectPtr<UObject> PinSubObject);
+	static bool CreateLocalVariable(UBlueprint* Blueprint, UEdGraph* LocalGraph, FKB_FunctionPinInformations Var);
 
 	// static FKB_PinTypeInformations GetPinTypeFromString(const FString& PinTypeString);
 

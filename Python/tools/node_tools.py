@@ -173,7 +173,7 @@ def register_blueprint_node_tools(mcp: FastMCP):
             return {"success": False, "message": error_msg}
     
     @mcp.tool()
-    def add_blueprint_variable(
+    def add_blueprint_member_variable(
         ctx: Context,
         blueprint_name: str,
         variable_name: str,
@@ -208,7 +208,7 @@ def register_blueprint_node_tools(mcp: FastMCP):
                 return {"success": False, "message": "Failed to connect to Unreal Engine"}
             
             logger.info(f"Adding variable '{variable_name}' to blueprint '{blueprint_name}'")
-            response = unreal.send_command("add_blueprint_variable", params)
+            response = unreal.send_command("add_blueprint_member_variable", params)
             
             if not response:
                 logger.error("No response from Unreal Engine")
@@ -219,6 +219,58 @@ def register_blueprint_node_tools(mcp: FastMCP):
             
         except Exception as e:
             error_msg = f"Error adding variable: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+        
+    @mcp.tool()
+    def add_blueprint_local_variable(
+        ctx: Context,
+        blueprint_name: str,        
+        function_or_graph_name: str,
+        variable_name: str,
+        variable_type: str,
+        variable_pin_type: str
+    ) -> Dict[str, Any]:
+        """
+        Add a local variable to a Blueprint's function or event graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or graph
+            variable_name: Name of the variable
+            variable_type: Type of the variable (Boolean, Integer, Float, Vector, etc.)
+            variable_pin_type: variable_pin_type can be "Single" for single values or "Array" for arrays, and "Map" for maps, "Set" for sets.
+        Returns:
+            Response indicating success or failure
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name,
+                "variable_name": variable_name,
+                "variable_type": variable_type,
+                "variable_pin_type": variable_pin_type
+            }
+            
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Adding local variable '{variable_name}' to blueprint '{blueprint_name}'")
+            response = unreal.send_command("add_blueprint_local_variable", params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Local variable creation response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error adding local variable: {e}"
             logger.error(error_msg)
             return {"success": False, "message": error_msg}
     
@@ -365,67 +417,6 @@ def register_blueprint_node_tools(mcp: FastMCP):
             
         except Exception as e:
             error_msg = f"Error finding nodes: {e}"
-            logger.error(error_msg)
-            return {"success": False, "message": error_msg}
-    
-    logger.info("Blueprint node tools registered successfully")
-
-    @mcp.tool()
-    def add_blueprint_function_node(
-        ctx: Context,
-        blueprint_name: str,
-        target: str,
-        function_name: str,
-        params = None,
-        node_position = None
-    ) -> Dict[str, Any]:
-        """
-        Add a function call node to a Blueprint's event graph.
-        
-        Args:
-            blueprint_name: Name of the target Blueprint
-            target: Target object for the function (component name or self)
-            function_name: Name of the function to call
-            params: Optional parameters to set on the function node
-            node_position: Optional [X, Y] position in the graph
-            
-        Returns:
-            Response containing the node ID and success status
-        """
-        from unreal_mcp_server import get_unreal_connection
-        
-        try:
-            # Handle default values within the method body
-            if params is None:
-                params = {}
-            if node_position is None:
-                node_position = [0, 0]
-            
-            command_params = {
-                "blueprint_name": blueprint_name,
-                "target": target,
-                "function_name": function_name,
-                "params": params,
-                "node_position": node_position
-            }
-            
-            unreal = get_unreal_connection()
-            if not unreal:
-                logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
-            
-            logger.info(f"Adding function node '{function_name}' to blueprint '{blueprint_name}'")
-            response = unreal.send_command("add_blueprint_function_node", command_params)
-            
-            if not response:
-                logger.error("No response from Unreal Engine")
-                return {"success": False, "message": "No response from Unreal Engine"}
-            
-            logger.info(f"Function node creation response: {response}")
-            return response
-            
-        except Exception as e:
-            error_msg = f"Error adding function node: {e}"
             logger.error(error_msg)
             return {"success": False, "message": error_msg}
         
@@ -725,7 +716,7 @@ def register_blueprint_node_tools(mcp: FastMCP):
             return {"success": False, "message": error_msg}
         
     @mcp.tool()
-    def add_make_struct_node(            
+    def add_make_struct_node(
         ctx: Context,
         blueprint_name: str,
         function_or_graph_name: str,
@@ -1055,34 +1046,7 @@ def register_blueprint_node_tools(mcp: FastMCP):
             error_msg = f"Error adding variable get node: {e}"
             logger.error(error_msg)
             return {"success": False, "message": error_msg}
-
                 
-            params = {
-                "blueprint_name": blueprint_name,
-                "function_or_graph_name": function_or_graph_name,
-                "variable_name": variable_name
-            }
-
-            unreal = get_unreal_connection()
-            if not unreal:
-                logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
-            
-            logger.info(f"Adding variable get node for '{variable_name}' in blueprint '{blueprint_name}'")
-            response = unreal.send_command("add_variable_get_node", params)
-            
-            if not response:
-                logger.error("No response from Unreal Engine")
-                return {"success": False, "message": "No response from Unreal Engine"}
-            
-            logger.info(f"Variable get node creation response: {response}")
-            return response
-            
-        except Exception as e:
-            error_msg = f"Error adding variable get node: {e}"
-            logger.error(error_msg)
-            return {"success": False, "message": error_msg}
-        
     @mcp.tool()
     def add_variable_set_node(
         ctx: Context,
@@ -1129,3 +1093,8 @@ def register_blueprint_node_tools(mcp: FastMCP):
             error_msg = f"Error adding variable set node: {e}"
             logger.error(error_msg)
             return {"success": False, "message": error_msg}
+        
+
+        
+    
+    logger.info("Blueprint node tools registered successfully")
