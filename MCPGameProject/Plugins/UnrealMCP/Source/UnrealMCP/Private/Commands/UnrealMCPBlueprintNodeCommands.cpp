@@ -46,10 +46,10 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleCommand(const FSt
     {
         return HandleAddBlueprintEvent(Params);
     }
-    else if (CommandType == TEXT("add_blueprint_function_node"))
-    {
-        return HandleAddBlueprintFunctionCall(Params);
-    }
+    // else if (CommandType == TEXT("add_blueprint_function_node"))
+    // {
+    //     return HandleAddBlueprintFunctionCall(Params);
+    // }
     else if (CommandType == TEXT("add_blueprint_variable"))
     {
         return HandleAddBlueprintVariable(Params);
@@ -113,6 +113,14 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleCommand(const FSt
     else if (CommandType == TEXT("get_all_nodes"))
     {
         return HandleGetAllNodes(Params);
+    }
+    else if (CommandType == TEXT("add_variable_get_node"))
+    {
+        return HandleAddVariableGetNode(Params);
+    }
+    else if (CommandType == TEXT("add_variable_set_node"))
+    {
+        return HandleAddVariableSetNode(Params);
     }
     
     return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Unknown blueprint node command: %s"), *CommandType));
@@ -1208,6 +1216,70 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddBreakStructNod
     else
     {
         return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Failed to create make struct node for %s"), *StructPath));
+    }
+}
+
+TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddVariableGetNode(const TSharedPtr<FJsonObject>& Params)
+{
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
+    {
+        return ErrorResponse;
+    }
+    FString VariableName;
+    if (!Params->TryGetStringField(TEXT("variable_name"), VariableName))
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'variable_name' parameter"));
+    }
+    UEdGraphNode* VariableNode = nullptr;
+    if (FUnrealMCPCommonUtils::KBL_SpawnK2VarNode(EventGraph, FName(VariableName), true, EVariableScopeType::Global, EVariableOperateType::GetValue, VariableNode))
+    {
+        UE_LOG(LogTemp, Display, TEXT("Created variable get node for %s in graph %s"), *VariableName, *EventGraph->GetName());
+
+        // Mark the blueprint as modified
+        FBlueprintEditorUtils::MarkBlueprintAsModified(Blueprint);
+
+        TSharedPtr<FJsonObject> ResultObj = MakeShared<FJsonObject>();
+        ResultObj->SetStringField(TEXT("node_id"), VariableNode->NodeGuid.ToString());
+        return ResultObj;
+    }
+    else
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Failed to create variable get node for %s"), *VariableName));
+    }
+}
+
+TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddVariableSetNode(const TSharedPtr<FJsonObject>& Params)
+{
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
+    {
+        return ErrorResponse;
+    }
+    FString VariableName;
+    if (!Params->TryGetStringField(TEXT("variable_name"), VariableName))
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'variable_name' parameter"));
+    }
+    UEdGraphNode* VariableNode = nullptr;
+    if (FUnrealMCPCommonUtils::KBL_SpawnK2VarNode(EventGraph, FName(VariableName), true, EVariableScopeType::Global, EVariableOperateType::SetValue, VariableNode))
+    {
+        UE_LOG(LogTemp, Display, TEXT("Created variable set node for %s in graph %s"), *VariableName, *EventGraph->GetName());
+
+        // Mark the blueprint as modified
+        FBlueprintEditorUtils::MarkBlueprintAsModified(Blueprint);
+
+        TSharedPtr<FJsonObject> ResultObj = MakeShared<FJsonObject>();
+        ResultObj->SetStringField(TEXT("node_id"), VariableNode->NodeGuid.ToString());
+        return ResultObj;
+    }
+    else
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Failed to create variable set node for %s"), *VariableName));
     }
 }
 

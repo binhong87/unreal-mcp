@@ -1008,4 +1008,124 @@ def register_blueprint_node_tools(mcp: FastMCP):
             error_msg = f"Error getting all nodes: {e}"
             logger.error(error_msg)
             return {"success": False, "message": error_msg}
-    
+        
+    @mcp.tool()
+    def add_variable_get_node(
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str,
+        variable_name: str
+    ) -> Dict[str, Any]:
+        """
+        Add a 'Get Variable' node to a Blueprint's event graph or function graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            variable_name: Name of the variable to get
+            
+        Returns:
+            Response containing the node ID and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name,
+                "variable_name": variable_name
+            }
+
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+
+            logger.info(f"Adding variable get node for '{variable_name}' in blueprint '{blueprint_name}'")
+            response = unreal.send_command("add_variable_get_node", params)
+
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+
+            logger.info(f"Variable get node creation response: {response}")
+            return response
+
+        except Exception as e:
+            error_msg = f"Error adding variable get node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+
+                
+            params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name,
+                "variable_name": variable_name
+            }
+
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+            
+            logger.info(f"Adding variable get node for '{variable_name}' in blueprint '{blueprint_name}'")
+            response = unreal.send_command("add_variable_get_node", params)
+            
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+            
+            logger.info(f"Variable get node creation response: {response}")
+            return response
+            
+        except Exception as e:
+            error_msg = f"Error adding variable get node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+        
+    @mcp.tool()
+    def add_variable_set_node(
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str,
+        variable_name: str
+    ) -> Dict[str, Any]:
+        """
+        Add a 'Set Variable' node to a Blueprint's event graph or function graph.
+        
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            variable_name: Name of the variable to set
+            
+        Returns:
+            Response containing the node ID and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name,
+                "variable_name": variable_name
+            }
+
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+
+            logger.info(f"Adding variable set node for '{variable_name}' in blueprint '{blueprint_name}'")
+            response = unreal.send_command("add_variable_set_node", params)
+
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+
+            logger.info(f"Variable set node creation response: {response}")
+            return response
+
+        except Exception as e:
+            error_msg = f"Error adding variable set node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}

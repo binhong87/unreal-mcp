@@ -1749,4 +1749,236 @@ bool FUnrealMCPCommonUtils::SpawnMacroInstanceNode(UEdGraph* LocalGraph, UEdGrap
     return true;
 }
 
+bool FUnrealMCPCommonUtils::KBL_SpawnK2VarNode(UEdGraph* LocalGraph, FName VarName, bool AutoDetectIfLocalOrGlobal, EVariableScopeType VarBoundaries, EVariableOperateType NodeType, UEdGraphNode*& NewNode)
+{
+    UEdGraph* Graph = LocalGraph;
+    if (!Graph)
+        return false;
+    EVariableScopeType LocalVariableType = VarBoundaries;
+    bool LocalBool;
+    EVariableType LocalVarType;
+    if (!KBL_DoesVariableExist(LocalGraph, VarName, LocalBool, LocalVarType))
+        return false;
+    if (AutoDetectIfLocalOrGlobal) {
+        if (LocalBool) {
+            LocalVariableType = EVariableScopeType::Local;
+        }
+        else {
+            LocalVariableType = EVariableScopeType::Global;
+        }
+    }
+    const UEdGraphSchema_K2* Schema = GetDefault<UEdGraphSchema_K2>();
+    if (!Schema)
+        return false;
+    FVector2D NodePosition = Graph->GetGoodPlaceForNewNode();
+    UK2Node_VariableSet* SetNode = nullptr;
+    UK2Node_VariableGet* GetNode = nullptr;
+    UK2Node_VariableSet* LocalSetNode = nullptr;
+    UK2Node_VariableGet* LocalGetNode = nullptr;
+    UBlueprint* Blueprint = FBlueprintEditorUtils::FindBlueprintForGraph(Graph);
+    switch (LocalVariableType) {
+    case EVariableScopeType::Global:
+        UStruct* LocalStruct;
+        KBL_NomalVarConversion(LocalVarType, LocalStruct);
+        switch (NodeType) {
+        case EVariableOperateType::SetValue:
+            LocalSetNode = Schema->SpawnVariableSetNode(NodePosition, Graph, VarName, LocalStruct);        
+            LocalSetNode->CreateNewGuid();
+            NewNode = LocalSetNode;
+            // NodeIndex = NodeList.Add(LocalSetNode);
+            break;
+        case EVariableOperateType::GetValue:
+            LocalGetNode = Schema->SpawnVariableGetNode(NodePosition, Graph, VarName, LocalStruct);        
+            LocalGetNode->CreateNewGuid();
+            NewNode = LocalGetNode;
+            // NodeIndex = NodeList.Add(LocalGetNode);
+            break;
+        }
+        break;
+    case EVariableScopeType::Local:
+        if (!Blueprint)
+            return false;
+        switch (NodeType) {
+        case EVariableOperateType::SetValue:
+            SetNode = NewObject<UK2Node_VariableSet>(Graph);
+            SetNode->VariableReference.SetLocalMember(VarName, Graph->GetName(), FGuid());
+            SetNode->CreateNewGuid();
+            if (!SetNode)
+                return false;
+            SetNode->AllocateDefaultPins();
+            Graph->AddNode(SetNode, true, false);
+            SetNode->NodePosX = NodePosition.X;
+            SetNode->NodePosY = NodePosition.Y;
+            NewNode = SetNode;
+            // NodeIndex = NodeList.Add(SetNode);
+            break;
+        case EVariableOperateType::GetValue:
+            GetNode = NewObject<UK2Node_VariableGet>(Graph);
+            GetNode->VariableReference.SetLocalMember(VarName, Graph->GetName(), FGuid());
+            GetNode->CreateNewGuid();
+            if (!GetNode)
+                return false;
+            GetNode->AllocateDefaultPins();
+            Graph->AddNode(GetNode, true, false);
+            GetNode->NodePosX = NodePosition.X;
+            GetNode->NodePosY = NodePosition.Y;
+            NewNode = GetNode;
+            // NodeIndex = NodeList.Add(GetNode);
+            break;
+        }
+        break;
+    }
+    return true;
+}
+
+bool FUnrealMCPCommonUtils::KBL_DoesVariableExist(UEdGraph* LocalGraph, FName VariableName, bool& IsLocalVar, EVariableType& VarType)
+{
+    UEdGraph* Graph = LocalGraph;
+    if (!Graph)
+        return false;
+    for (FBPVariableDescription LocalVar : GetLocalVariablesForGraph(Graph)) {
+        if (LocalVar.VarName == VariableName) {
+            IsLocalVar = true;
+            VarType = KBL_RevertedPinVarConversion(LocalVar.VarType.PinCategory, LocalVar.VarType.PinSubCategory, LocalVar.VarType.PinSubCategoryObject);
+            return true;
+        }
+    }
+    for (FBPVariableDescription GlobalVar : GetGlobalVariablesForBlueprint(FBlueprintEditorUtils::FindBlueprintForGraph(Graph))) {
+        if (GlobalVar.VarName == VariableName) {
+            IsLocalVar = false;
+            VarType = KBL_RevertedPinVarConversion(GlobalVar.VarType.PinCategory, GlobalVar.VarType.PinSubCategory, GlobalVar.VarType.PinSubCategoryObject);
+            return true;
+        }
+    }
+    return false;
+}
+
+void FUnrealMCPCommonUtils::KBL_NomalVarConversion(EVariableType VarType, UStruct*& ReturnStruct)
+{
+    UStruct* LocalReturnStruct = nullptr;
+    switch (VarType) {
+    case EVariableType::VarType_Object:
+        LocalReturnStruct = UObject::StaticClass();
+        break;
+    case EVariableType::VarType_Texture2D:
+        LocalReturnStruct = UTexture2D::StaticClass();
+        break;
+    case EVariableType::VarType_Actor:
+        LocalReturnStruct = AActor::StaticClass();
+        break;
+    }
+    ReturnStruct = LocalReturnStruct;
+}
+
+TArray<FBPVariableDescription> FUnrealMCPCommonUtils::GetLocalVariablesForGraph(const UEdGraph* Graph)
+{
+    TArray<FBPVariableDescription> LocalVariables;
+
+    if (!Graph)
+    {
+        return LocalVariables;
+    }
+
+    for (UEdGraphNode* Node : Graph->Nodes)
+    {
+        if (UK2Node_FunctionEntry* FunctionEntryNode = Cast<UK2Node_FunctionEntry>(Node))
+        {
+            LocalVariables.Append(FunctionEntryNode->LocalVariables);
+        }
+    }
+
+    return LocalVariables;
+}
+
+TArray<FBPVariableDescription> FUnrealMCPCommonUtils::GetGlobalVariablesForBlueprint(const UBlueprint* Blueprint)
+{
+    TArray<FBPVariableDescription> GlobalVariables;
+
+    if (!Blueprint)
+    {
+        return GlobalVariables;
+    }
+
+    GlobalVariables = Blueprint->NewVariables;
+
+    return GlobalVariables;
+}
+
+EVariableType FUnrealMCPCommonUtils::KBL_RevertedPinVarConversion(FName PinCategory, FName PinSubCategory, TWeakObjectPtr<UObject> PinSubObject)
+{
+        if (PinCategory == "struct") {
+            if (PinSubObject == TBaseStructure<FVector>::Get()) {
+                return EVariableType::VarType_Vector;
+            }
+            else if (PinSubObject == TBaseStructure<FRotator>::Get()) {
+                return EVariableType::VarType_Rotator;
+            }
+            else if (PinSubObject == TBaseStructure<FTransform>::Get()) {
+                return EVariableType::VarType_Transform;
+            }
+            else if (PinSubObject == TBaseStructure<FColor>::Get()) {
+                return EVariableType::VarType_Color;
+            }
+            else if (PinSubObject == TBaseStructure<FVector2D>::Get()) {
+                return EVariableType::VarType_Vector2D;
+            }
+            else if (PinSubObject == TBaseStructure<FLinearColor>::Get()) {
+                return EVariableType::VarType_LinearColor;
+            }
+            else if (PinSubObject == TBaseStructure<FSlateColor>::Get()) {
+                return EVariableType::VarType_SlateColor;
+            }
+            else if (PinSubObject == TBaseStructure<FIntPoint>::Get()) {
+                return EVariableType::VarType_IntPoint;
+            }
+            else if (PinSubObject == TBaseStructure<FDateTime>::Get()) {
+                return EVariableType::VarType_DateTime;
+            }
+            else if (PinSubObject == TBaseStructure<FIntVector>::Get()) {
+                return EVariableType::VarType_IntVector;
+            }
+            else if (PinSubObject == TBaseStructure<FIntVector4>::Get()) {
+                return EVariableType::VarType_IntVector4;
+            }
+
+        }
+        else if (PinCategory == "object") {
+            if (PinSubObject == UObject::StaticClass()) {
+                return EVariableType::VarType_Object;
+            }
+            else if (PinSubObject == UTexture2D::StaticClass()) {
+                return EVariableType::VarType_Texture2D;
+            }
+            else if (PinSubObject == AActor::StaticClass()) {
+                return EVariableType::VarType_Actor;
+            }
+        }
+        else if (PinCategory == "bool") {
+            return EVariableType::VarType_Boolean;
+        }
+        else if (PinCategory == "byte") {
+            return EVariableType::VarType_Byte;
+        }
+        else if (PinCategory == "int") {
+            return EVariableType::VarType_Integer;
+        }
+        else if (PinCategory == "int64") {
+            return EVariableType::VarType_Integer64;
+        }
+        else if (PinCategory == "real") {
+            if (PinSubCategory == "double")
+                return EVariableType::VarType_Float;
+        }
+        else if (PinCategory == "name") {
+            return EVariableType::VarType_Name;
+        }
+        else if (PinCategory == "string") {
+            return EVariableType::VarType_String;
+        }
+        else if (PinCategory == "text") {
+            return EVariableType::VarType_Text;
+        }
+        return EVariableType::VarType_Integer;
+}
+
 #undef LOCTEXT_NAMESPACE
