@@ -259,9 +259,10 @@ FString UUnrealMCPBridge::ExecuteCommand(const FString& CommandType, const TShar
                         CommandType == TEXT("find_blueprint_nodes") ||
                         CommandType == TEXT("add_blueprint_event_node") ||
                         CommandType == TEXT("add_blueprint_input_action_node") ||
-                        CommandType == TEXT("add_blueprint_function_node") ||
+                        // CommandType == TEXT("add_blueprint_function_node") ||
                         CommandType == TEXT("add_blueprint_get_component_node") ||
-                        CommandType == TEXT("add_blueprint_variable") ||
+                        CommandType == TEXT("add_blueprint_member_variable") ||
+                        CommandType == TEXT("add_blueprint_local_variable") ||
                         CommandType == TEXT("add_function_call_node") ||
                         CommandType == TEXT("add_math_node") ||
                         CommandType == TEXT("add_control_node") ||
