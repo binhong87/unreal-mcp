@@ -1744,7 +1744,7 @@ bool FUnrealMCPCommonUtils::SpawnMacroInstanceNode(UEdGraph* LocalGraph, UEdGrap
     return true;
 }
 
-bool FUnrealMCPCommonUtils::KBL_SpawnK2VarNode(UEdGraph* LocalGraph, FName VarName, bool AutoDetectIfLocalOrGlobal, EVariableScopeType VarBoundaries, EVariableOperateType NodeType, UEdGraphNode*& NewNode)
+bool FUnrealMCPCommonUtils::SpawnVariableNode(UEdGraph* LocalGraph, FName VarName, bool AutoDetectIfLocalOrGlobal, EVariableScopeType VarBoundaries, EVariableOperateType NodeType, UEdGraphNode*& NewNode)
 {
     UEdGraph* Graph = LocalGraph;
     if (!Graph)
@@ -1752,7 +1752,7 @@ bool FUnrealMCPCommonUtils::KBL_SpawnK2VarNode(UEdGraph* LocalGraph, FName VarNa
     EVariableScopeType LocalVariableType = VarBoundaries;
     bool LocalBool;
     EVariableType LocalVarType;
-    if (!KBL_DoesVariableExist(LocalGraph, VarName, LocalBool, LocalVarType))
+    if (!IsVariableExist(LocalGraph, VarName, LocalBool, LocalVarType))
         return false;
     if (AutoDetectIfLocalOrGlobal) {
         if (LocalBool) {
@@ -1774,7 +1774,7 @@ bool FUnrealMCPCommonUtils::KBL_SpawnK2VarNode(UEdGraph* LocalGraph, FName VarNa
     switch (LocalVariableType) {
     case EVariableScopeType::Global:
         UStruct* LocalStruct;
-        KBL_NomalVarConversion(LocalVarType, LocalStruct);
+        VarConversion(LocalVarType, LocalStruct);
         switch (NodeType) {
         case EVariableOperateType::SetValue:
             LocalSetNode = Schema->SpawnVariableSetNode(NodePosition, Graph, VarName, LocalStruct);        
@@ -1826,7 +1826,7 @@ bool FUnrealMCPCommonUtils::KBL_SpawnK2VarNode(UEdGraph* LocalGraph, FName VarNa
     return true;
 }
 
-bool FUnrealMCPCommonUtils::KBL_DoesVariableExist(UEdGraph* LocalGraph, FName VariableName, bool& IsLocalVar, EVariableType& VarType)
+bool FUnrealMCPCommonUtils::IsVariableExist(UEdGraph* LocalGraph, FName VariableName, bool& IsLocalVar, EVariableType& VarType)
 {
     UEdGraph* Graph = LocalGraph;
     if (!Graph)
@@ -1834,21 +1834,21 @@ bool FUnrealMCPCommonUtils::KBL_DoesVariableExist(UEdGraph* LocalGraph, FName Va
     for (FBPVariableDescription LocalVar : GetLocalVariablesForGraph(Graph)) {
         if (LocalVar.VarName == VariableName) {
             IsLocalVar = true;
-            VarType = KBL_RevertedPinVarConversion(LocalVar.VarType.PinCategory, LocalVar.VarType.PinSubCategory, LocalVar.VarType.PinSubCategoryObject);
+            VarType = GetVariableTypeFromPinInfo(LocalVar.VarType.PinCategory, LocalVar.VarType.PinSubCategory, LocalVar.VarType.PinSubCategoryObject);
             return true;
         }
     }
     for (FBPVariableDescription GlobalVar : GetGlobalVariablesForBlueprint(FBlueprintEditorUtils::FindBlueprintForGraph(Graph))) {
         if (GlobalVar.VarName == VariableName) {
             IsLocalVar = false;
-            VarType = KBL_RevertedPinVarConversion(GlobalVar.VarType.PinCategory, GlobalVar.VarType.PinSubCategory, GlobalVar.VarType.PinSubCategoryObject);
+            VarType = GetVariableTypeFromPinInfo(GlobalVar.VarType.PinCategory, GlobalVar.VarType.PinSubCategory, GlobalVar.VarType.PinSubCategoryObject);
             return true;
         }
     }
     return false;
 }
 
-void FUnrealMCPCommonUtils::KBL_NomalVarConversion(EVariableType VarType, UStruct*& ReturnStruct)
+void FUnrealMCPCommonUtils::VarConversion(EVariableType VarType, UStruct*& ReturnStruct)
 {
     UStruct* LocalReturnStruct = nullptr;
     switch (VarType) {
@@ -1899,7 +1899,7 @@ TArray<FBPVariableDescription> FUnrealMCPCommonUtils::GetGlobalVariablesForBluep
     return GlobalVariables;
 }
 
-EVariableType FUnrealMCPCommonUtils::KBL_RevertedPinVarConversion(FName PinCategory, FName PinSubCategory, TWeakObjectPtr<UObject> PinSubObject)
+EVariableType FUnrealMCPCommonUtils::GetVariableTypeFromPinInfo(FName PinCategory, FName PinSubCategory, TWeakObjectPtr<UObject> PinSubObject)
 {
         if (PinCategory == "struct") {
             if (PinSubObject == TBaseStructure<FVector>::Get()) {
@@ -2058,6 +2058,90 @@ bool FUnrealMCPCommonUtils::CreateLocalVariable(UBlueprint* Blueprint, UEdGraph*
     }
 
     FBlueprintEditorUtils::AddLocalVariable(LocalBlueprint, LocalGraph, Var.Name, MyPinType, FString());
+    FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(LocalBlueprint);
+    FKismetEditorUtilities::CompileBlueprint(LocalBlueprint);
+    return true;
+}
+
+bool FUnrealMCPCommonUtils::CreateMemberVariable(UBlueprint* Blueprint, FKB_FunctionPinInformations Var)
+{
+    UBlueprint* LocalBlueprint = Blueprint;
+    if (!LocalBlueprint)
+        return false;
+
+    EVariablePinType Banana = Var.VarType;
+    EPinContainerType LocalContainerType = EPinContainerType::None;
+    switch (Banana) {
+    case EVariablePinType::Single:
+        LocalContainerType = EPinContainerType::None;
+        break;
+    case EVariablePinType::Array:
+        LocalContainerType = EPinContainerType::Array;
+        break;
+    case EVariablePinType::Set:
+        LocalContainerType = EPinContainerType::Set;
+        break;
+    case EVariablePinType::Map:
+        LocalContainerType = EPinContainerType::Map;
+        break;
+    }
+
+    FName LocalPinCategory = "None";
+    FName LocalPinSubCategory = "None";
+    TWeakObjectPtr<UObject> LocalPinSubObject = nullptr;
+
+    if (Var.UseCustomVarType)
+    {
+        if (!Var.CustomVarTypePath.IsEmpty() && !Var.CustomVarTypeName.IsEmpty())
+        {
+            UObject* CustomType = LoadObject<UObject>(nullptr, *Var.CustomVarTypePath);
+            if (CustomType)
+            {
+                if (UEnum* CustomEnum = Cast<UEnum>(CustomType))
+                {
+                    LocalPinCategory = "byte";
+                    LocalPinSubCategory = "None";
+                    LocalPinSubObject = CustomEnum;
+                }
+                else if (UScriptStruct* CustomStruct = Cast<UScriptStruct>(CustomType))
+                {
+                    LocalPinCategory = "struct";
+                    LocalPinSubCategory = "None";
+                    LocalPinSubObject = CustomStruct;
+                }
+            }
+        }
+    }
+    else
+    {
+        PinVarConversionLocal(Var.Type, LocalPinCategory, LocalPinSubCategory, LocalPinSubObject);
+    }
+
+    FEdGraphPinType MyPinType;
+    MyPinType.bIsConst = false;
+    MyPinType.bIsReference = false;
+    MyPinType.bIsUObjectWrapper = false;
+    MyPinType.bIsWeakPointer = false;
+    MyPinType.ContainerType = LocalContainerType;
+    MyPinType.PinCategory = LocalPinCategory;
+    MyPinType.PinSubCategory = LocalPinSubCategory;
+    MyPinType.PinSubCategoryObject = LocalPinSubObject;
+    MyPinType.PinSubCategoryMemberReference.MemberName = "None";
+    MyPinType.PinValueType.bTerminalIsConst = false;
+    MyPinType.PinValueType.bTerminalIsUObjectWrapper = false;
+    MyPinType.PinValueType.bTerminalIsWeakPointer = false;
+    MyPinType.PinValueType.TerminalCategory = "None";
+    MyPinType.PinValueType.TerminalSubCategory = "None";
+
+    if (LocalContainerType == EPinContainerType::Map) {
+        MyPinType.PinCategory = "int";    
+        MyPinType.PinValueType.TerminalCategory = "string";    
+        MyPinType.PinValueType.TerminalSubCategory = "None";
+        MyPinType.PinValueType.TerminalSubCategoryObject = nullptr;
+        MyPinType.PinSubCategory = "None";
+        MyPinType.PinSubCategoryObject = nullptr;
+    }
+    FBlueprintEditorUtils::AddMemberVariable(LocalBlueprint, Var.Name, MyPinType, FString());
     FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(LocalBlueprint);
     FKismetEditorUtilities::CompileBlueprint(LocalBlueprint);
     return true;

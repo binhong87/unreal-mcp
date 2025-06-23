@@ -15,7 +15,7 @@ def register_blueprint_node_tools(mcp: FastMCP):
     """Register Blueprint node manipulation tools with the MCP server."""
     
     @mcp.tool()
-    def add_blueprint_event_node(
+    def add_event_node(
         ctx: Context,
         blueprint_name: str,
         event_name: str,
@@ -54,7 +54,7 @@ def register_blueprint_node_tools(mcp: FastMCP):
                 return {"success": False, "message": "Failed to connect to Unreal Engine"}
             
             logger.info(f"Adding event node '{event_name}' to blueprint '{blueprint_name}'")
-            response = unreal.send_command("add_blueprint_event_node", params)
+            response = unreal.send_command("add_event_node", params)
             
             if not response:
                 logger.error("No response from Unreal Engine")
@@ -178,6 +178,7 @@ def register_blueprint_node_tools(mcp: FastMCP):
         blueprint_name: str,
         variable_name: str,
         variable_type: str,
+        variable_pin_type: str = "Single",  # Default to single value
         is_exposed: bool = False
     ) -> Dict[str, Any]:
         """
@@ -187,6 +188,7 @@ def register_blueprint_node_tools(mcp: FastMCP):
             blueprint_name: Name of the target Blueprint
             variable_name: Name of the variable
             variable_type: Type of the variable (Boolean, Integer, Float, Vector, etc.)
+            variable_pin_type: Type of pin for the variable (Single, Array, Map, Set)
             is_exposed: Whether to expose the variable to the editor
             
         Returns:
@@ -199,6 +201,7 @@ def register_blueprint_node_tools(mcp: FastMCP):
                 "blueprint_name": blueprint_name,
                 "variable_name": variable_name,
                 "variable_type": variable_type,
+                "variable_pin_type": variable_pin_type,
                 "is_exposed": is_exposed
             }
             

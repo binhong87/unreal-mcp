@@ -276,14 +276,16 @@ public:
 	
 	static bool SpawnMacroInstanceNode(UEdGraph* LocalGraph, UEdGraph* MacroGraph, UEdGraphNode*& NewNode);
 
-	static bool KBL_SpawnK2VarNode(UEdGraph* LocalGraph, FName VarName, bool AutoDetectIfLocalOrGlobal, EVariableScopeType VarBoundaries, EVariableOperateType NodeType, UEdGraphNode*& NewNode);
-	static bool KBL_DoesVariableExist(UEdGraph* LocalGraph, FName VariableName, bool& IsLocalVar, EVariableType& VarType);
-	static void KBL_NomalVarConversion(EVariableType VarType, UStruct*& ReturnStruct);
+	static bool SpawnVariableNode(UEdGraph* LocalGraph, FName VarName, bool AutoDetectIfLocalOrGlobal, EVariableScopeType VarBoundaries, EVariableOperateType NodeType, UEdGraphNode*& NewNode);
+	static bool IsVariableExist(UEdGraph* LocalGraph, FName VariableName, bool& IsLocalVar, EVariableType& VarType);
+	static void VarConversion(EVariableType VarType, UStruct*& ReturnStruct);
 
 	static TArray<FBPVariableDescription> GetLocalVariablesForGraph(const UEdGraph* Graph);
 	static TArray<FBPVariableDescription> GetGlobalVariablesForBlueprint(const UBlueprint* Blueprint);
-	static EVariableType KBL_RevertedPinVarConversion(FName PinCategory, FName PinSubCategory, TWeakObjectPtr<UObject> PinSubObject);
+	static EVariableType GetVariableTypeFromPinInfo(FName PinCategory, FName PinSubCategory, TWeakObjectPtr<UObject> PinSubObject);
 	static bool CreateLocalVariable(UBlueprint* Blueprint, UEdGraph* LocalGraph, FKB_FunctionPinInformations Var);
+	static bool CreateMemberVariable(UBlueprint* Blueprint, FKB_FunctionPinInformations Var);
+	
 
 	// static FKB_PinTypeInformations GetPinTypeFromString(const FString& PinTypeString);
 

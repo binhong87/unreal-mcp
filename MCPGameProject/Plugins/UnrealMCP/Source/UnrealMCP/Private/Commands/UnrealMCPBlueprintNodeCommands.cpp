@@ -42,9 +42,9 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleCommand(const FSt
     {
         return HandleAddBlueprintGetSelfComponentReference(Params);
     }
-    else if (CommandType == TEXT("add_blueprint_event_node"))
+    else if (CommandType == TEXT("add_event_node"))
     {
-        return HandleAddBlueprintEvent(Params);
+        return HandleAddEventNode(Params);
     }
     // else if (CommandType == TEXT("add_blueprint_function_node"))
     // {
@@ -185,7 +185,7 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddBlueprintGetSe
     return ResultObj;
 }
 
-TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddBlueprintEvent(const TSharedPtr<FJsonObject>& Params)
+TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddEventNode(const TSharedPtr<FJsonObject>& Params)
 {
     UEdGraph* EventGraph;
     UBlueprint* Blueprint;
@@ -242,13 +242,17 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddBlueprintMembe
     {
         return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'variable_type' parameter"));
     }
-
+    FString VariablePinType;
+    if (!Params->TryGetStringField(TEXT("variable_pin_type"), VariablePinType))
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'variable_pin_type' parameter"));
+    }
     // Get optional parameters
     bool IsExposed = false;
     if (Params->HasField(TEXT("is_exposed")))
     {
         IsExposed = Params->GetBoolField(TEXT("is_exposed"));
-    }
+    }    
 
     // Find the blueprint
     UBlueprint* Blueprint = FUnrealMCPCommonUtils::FindBlueprint(BlueprintName);
@@ -257,66 +261,40 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddBlueprintMembe
         return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Blueprint not found: %s"), *BlueprintName));
     }
 
-    // Create variable based on type
-    FEdGraphPinType PinType;
-    
-    // Set up pin type based on variable_type string
-    if (VariableType == TEXT("Boolean"))
-    {
-        PinType.PinCategory = UEdGraphSchema_K2::PC_Boolean;
-    }
-    else if (VariableType == TEXT("Integer") || VariableType == TEXT("Int"))
-    {
-        PinType.PinCategory = UEdGraphSchema_K2::PC_Int;
-    }
-    else if (VariableType == TEXT("Float"))
-    {
-        PinType.PinCategory = UEdGraphSchema_K2::PC_Float;
-    }
-    else if (VariableType == TEXT("String"))
-    {
-        PinType.PinCategory = UEdGraphSchema_K2::PC_String;
-    }
-    else if (VariableType == TEXT("Vector"))
-    {
-        PinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
-        PinType.PinSubCategoryObject = TBaseStructure<FVector>::Get();
-    }
-    else
-    {
-        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Unsupported variable type: %s"), *VariableType));
-    }
+    FKB_FunctionPinInformations VariableInfo;
+    VariableInfo.Name = FName(VariableName);
+    VariableInfo.Type = FUnrealMCPCommonUtils::GetVariableTypeFromString(VariableType);
+    VariableInfo.VarType = FUnrealMCPCommonUtils::GetVariablePinTypeFromString(VariablePinType);
 
-    // Create the variable
-    FBlueprintEditorUtils::AddMemberVariable(Blueprint, FName(*VariableName), PinType);
-
-    // Set variable properties
-    FBPVariableDescription* NewVar = nullptr;
-    for (FBPVariableDescription& Variable : Blueprint->NewVariables)
+    if (FUnrealMCPCommonUtils::CreateMemberVariable(Blueprint, VariableInfo))
     {
-        if (Variable.VarName == FName(*VariableName))
+        // Set variable properties
+        FBPVariableDescription* NewVar = nullptr;
+        for (FBPVariableDescription& Variable : Blueprint->NewVariables)
         {
-            NewVar = &Variable;
-            break;
+            if (Variable.VarName == FName(*VariableName))
+            {
+                NewVar = &Variable;
+                break;
+            }
         }
-    }
-
-    if (NewVar)
-    {
-        // Set exposure in editor
-        if (IsExposed)
+        if (NewVar)
         {
-            NewVar->PropertyFlags |= CPF_Edit;
+            // Set exposure in editor
+            if (IsExposed)
+            {
+                NewVar->PropertyFlags |= CPF_Edit;
+            }
         }
+        // Mark the blueprint as modified
+        FBlueprintEditorUtils::MarkBlueprintAsModified(Blueprint);
+        TSharedPtr<FJsonObject> ResultObj = MakeShared<FJsonObject>();
+        ResultObj->SetStringField(TEXT("variable_name"), VariableName);
+        ResultObj->SetStringField(TEXT("variable_type"), VariableType);
+        return ResultObj;
     }
-
-    // Mark the blueprint as modified
-    FBlueprintEditorUtils::MarkBlueprintAsModified(Blueprint);
-
-    TSharedPtr<FJsonObject> ResultObj = MakeShared<FJsonObject>();
-    ResultObj->SetStringField(TEXT("variable_name"), VariableName);
-    ResultObj->SetStringField(TEXT("variable_type"), VariableType);
-    return ResultObj;
+    return FUnrealMCPCommonUtils::CreateErrorResponse(
+        FString::Printf(TEXT("Failed to create member variable: %s of type %s"), *VariableName, *VariableType));
 }
 
 TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddBlueprintLocalVariable(const TSharedPtr<FJsonObject>& Params)
@@ -874,7 +852,7 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddVariableGetNod
         return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'variable_name' parameter"));
     }
     UEdGraphNode* VariableNode = nullptr;
-    if (FUnrealMCPCommonUtils::KBL_SpawnK2VarNode(EventGraph, FName(VariableName), true, EVariableScopeType::Global, EVariableOperateType::GetValue, VariableNode))
+    if (FUnrealMCPCommonUtils::SpawnVariableNode(EventGraph, FName(VariableName), true, EVariableScopeType::Global, EVariableOperateType::GetValue, VariableNode))
     {
         UE_LOG(LogTemp, Display, TEXT("Created variable get node for %s in graph %s"), *VariableName, *EventGraph->GetName());
 
@@ -906,7 +884,7 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddVariableSetNod
         return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'variable_name' parameter"));
     }
     UEdGraphNode* VariableNode = nullptr;
-    if (FUnrealMCPCommonUtils::KBL_SpawnK2VarNode(EventGraph, FName(VariableName), true, EVariableScopeType::Global, EVariableOperateType::SetValue, VariableNode))
+    if (FUnrealMCPCommonUtils::SpawnVariableNode(EventGraph, FName(VariableName), true, EVariableScopeType::Global, EVariableOperateType::SetValue, VariableNode))
     {
         UE_LOG(LogTemp, Display, TEXT("Created variable set node for %s in graph %s"), *VariableName, *EventGraph->GetName());
 
