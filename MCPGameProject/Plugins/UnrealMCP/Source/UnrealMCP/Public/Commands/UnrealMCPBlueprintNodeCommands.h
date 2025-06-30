@@ -36,6 +36,7 @@ private:
     TSharedPtr<FJsonObject> HandleAddBreakStructNode(const TSharedPtr<FJsonObject>& Params);
     TSharedPtr<FJsonObject> HandleAddVariableGetNode(const TSharedPtr<FJsonObject>& Params);
     TSharedPtr<FJsonObject> HandleAddVariableSetNode(const TSharedPtr<FJsonObject>& Params);
+    TSharedPtr<FJsonObject> HandleAddComponentNode(const TSharedPtr<FJsonObject>& Params);
 
     TSharedPtr<FJsonObject> HandleFindEventNodeByName(const TSharedPtr<FJsonObject>& Params);
     TSharedPtr<FJsonObject> HandleGetNodePins(const TSharedPtr<FJsonObject>& Params);

@@ -285,6 +285,8 @@ public:
 	static EVariableType GetVariableTypeFromPinInfo(FName PinCategory, FName PinSubCategory, TWeakObjectPtr<UObject> PinSubObject);
 	static bool CreateLocalVariable(UBlueprint* Blueprint, UEdGraph* LocalGraph, FKB_FunctionPinInformations Var);
 	static bool CreateMemberVariable(UBlueprint* Blueprint, FKB_FunctionPinInformations Var);
+
+	static bool SpawnAddComponentNode(UEdGraph* LocalGraph, UClass* ComponentClass, UEdGraphNode*& NewNode);
 	
 
 	// static FKB_PinTypeInformations GetPinTypeFromString(const FString& PinTypeString);

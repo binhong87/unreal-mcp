@@ -18,6 +18,7 @@
 #include "UObject/UObjectIterator.h"
 #include "Engine/BlueprintGeneratedClass.h"
 #include "BlueprintFunctionNodeSpawner.h"
+#include "K2Node_AddComponent.h"
 #include "K2Node_BreakStruct.h"
 #include "K2Node_ExecutionSequence.h"
 #include "K2Node_FunctionEntry.h"
@@ -2144,6 +2145,33 @@ bool FUnrealMCPCommonUtils::CreateMemberVariable(UBlueprint* Blueprint, FKB_Func
     FBlueprintEditorUtils::AddMemberVariable(LocalBlueprint, Var.Name, MyPinType, FString());
     FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(LocalBlueprint);
     FKismetEditorUtilities::CompileBlueprint(LocalBlueprint);
+    return true;
+}
+
+bool FUnrealMCPCommonUtils::SpawnAddComponentNode(UEdGraph* LocalGraph, UClass* ComponentClass, UEdGraphNode*& NewNode)
+{
+    if (LocalGraph == nullptr || ComponentClass == nullptr)
+    {
+        return false;
+    }
+    UK2Node_AddComponent* AddComponentNode = NewObject<UK2Node_AddComponent>(LocalGraph);
+    if (!AddComponentNode)
+    {
+        return false;
+    }
+    AddComponentNode->SetFlags(RF_Transactional);
+    AddComponentNode->TemplateType = ComponentClass;
+    FVector2D NodePosition = LocalGraph->GetGoodPlaceForNewNode();
+    LocalGraph->AddNode(AddComponentNode, true, false);
+    AddComponentNode->CreateNewGuid();
+    AddComponentNode->PostPlacedNewNode();
+    AddComponentNode->AllocateDefaultPins();
+    AddComponentNode->NodePosX = NodePosition.X;
+    AddComponentNode->NodePosY = NodePosition.Y;
+    NewNode = AddComponentNode;
+    FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(FBlueprintEditorUtils::FindBlueprintForGraph(LocalGraph));
+    FKismetEditorUtilities::CompileBlueprint(FBlueprintEditorUtils::FindBlueprintForGraph(LocalGraph));
+
     return true;
 }
 

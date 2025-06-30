@@ -1096,8 +1096,57 @@ def register_blueprint_node_tools(mcp: FastMCP):
             error_msg = f"Error adding variable set node: {e}"
             logger.error(error_msg)
             return {"success": False, "message": error_msg}
+    @mcp.tool()
+    def add_component_node(
+        ctx: Context,
+        blueprint_name: str,
+        function_or_graph_name: str,
+        component_class: str,
+        node_position = None
+    ) -> Dict[str, Any]:
+        """
+        Add a component node to a Blueprint's event graph that creates or references a component.
         
+        Args:
+            blueprint_name: Name of the target Blueprint
+            function_or_graph_name: Name of the function or event graph
+            component_class: Class of the component (e.g., 'StaticMeshComponent')
+            node_position: Optional [X, Y] position in the graph
+            
+        Returns:
+            Response containing the node ID and success status
+        """
+        from unreal_mcp_server import get_unreal_connection
+        
+        try:
+            if node_position is None:
+                node_position = [0, 0]
+                
+            params = {
+                "blueprint_name": blueprint_name,
+                "function_or_graph_name": function_or_graph_name,
+                "component_class": component_class,
+                "node_position": node_position
+            }
 
-        
-    
+            unreal = get_unreal_connection()
+            if not unreal:
+                logger.error("Failed to connect to Unreal Engine")
+                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+
+            logger.info(f"Adding component node for '{component_class}' in blueprint '{blueprint_name}'")
+            response = unreal.send_command("add_component_node", params)
+
+            if not response:
+                logger.error("No response from Unreal Engine")
+                return {"success": False, "message": "No response from Unreal Engine"}
+
+            logger.info(f"Component node creation response: {response}")
+            return response
+
+        except Exception as e:
+            error_msg = f"Error adding component node: {e}"
+            logger.error(error_msg)
+            return {"success": False, "message": error_msg}
+
     logger.info("Blueprint node tools registered successfully")

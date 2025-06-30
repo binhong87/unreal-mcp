@@ -46,10 +46,6 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleCommand(const FSt
     {
         return HandleAddEventNode(Params);
     }
-    // else if (CommandType == TEXT("add_blueprint_function_node"))
-    // {
-    //     return HandleAddBlueprintFunctionCall(Params);
-    // }
     else if (CommandType == TEXT("add_blueprint_member_variable"))
     {
         return HandleAddBlueprintMemberVariable(Params);
@@ -125,6 +121,10 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleCommand(const FSt
     else if (CommandType == TEXT("add_variable_set_node"))
     {
         return HandleAddVariableSetNode(Params);
+    }
+    else if (CommandType == TEXT("add_component_node"))
+    {
+        return HandleAddComponentNode(Params);
     }
     
     return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Unknown blueprint node command: %s"), *CommandType));
@@ -898,6 +898,43 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddVariableSetNod
     else
     {
         return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Failed to create variable set node for %s"), *VariableName));
+    }
+}
+
+TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddComponentNode(const TSharedPtr<FJsonObject>& Params)
+{
+    UEdGraph* EventGraph;
+    UBlueprint* Blueprint;
+    TSharedPtr<FJsonObject> ErrorResponse;
+    if (!GetEventGraphFromParams(Params, Blueprint, EventGraph, ErrorResponse))
+    {
+        return ErrorResponse;
+    }
+    FString ComponentClassName;
+    if (!Params->TryGetStringField(TEXT("component_class"), ComponentClassName))
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(TEXT("Missing 'component_class' parameter"));
+    }
+    UClass* ComponentClass = FindObject<UClass>(ANY_PACKAGE, *ComponentClassName);
+    if (!ComponentClass)
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Component class not found: %s"), *ComponentClassName));
+    }
+    UEdGraphNode* ComponentNode = nullptr;
+    if (FUnrealMCPCommonUtils::SpawnAddComponentNode(EventGraph, ComponentClass, ComponentNode))
+    {
+        UE_LOG(LogTemp, Display, TEXT("Created component node for %s in graph %s"), *ComponentClassName, *EventGraph->GetName());
+
+        // Mark the blueprint as modified
+        FBlueprintEditorUtils::MarkBlueprintAsModified(Blueprint);
+
+        TSharedPtr<FJsonObject> ResultObj = MakeShared<FJsonObject>();
+        ResultObj->SetStringField(TEXT("node_id"), ComponentNode->NodeGuid.ToString());
+        return ResultObj;
+    }
+    else
+    {
+        return FUnrealMCPCommonUtils::CreateErrorResponse(FString::Printf(TEXT("Failed to create component node for %s"), *ComponentClassName));
     }
 }
 
