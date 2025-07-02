@@ -21,9 +21,24 @@
 #include "K2Node_Select.h"
 #include "K2Node_SwitchEnum.h"
 #include "K2Node_VariableSet.h"
+#include "Kismet/BlueprintInstancedStructLibrary.h"
+#include "Kismet/BlueprintMapLibrary.h"
+#include "Kismet/BlueprintPathsLibrary.h"
+#include "Kismet/BlueprintPlatformLibrary.h"
+#include "Kismet/BlueprintSetLibrary.h"
+#include "Kismet/DataTableFunctionLibrary.h"
+#include "Kismet/ImportanceSamplingLibrary.h"
 #include "Kismet/KismetArrayLibrary.h"
+#include "Kismet/KismetGuidLibrary.h"
+#include "Kismet/KismetInputLibrary.h"
+#include "Kismet/KismetInternationalizationLibrary.h"
+#include "Kismet/KismetMaterialLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetNodeHelperLibrary.h"
+#include "Kismet/KismetRenderingLibrary.h"
 #include "Kismet/KismetStringLibrary.h"
+#include "Kismet/KismetStringTableLibrary.h"
+#include "Kismet/KismetTextLibrary.h"
 
 // Declare the log category
 DEFINE_LOG_CATEGORY_STATIC(LogUnrealMCP, Log, All);
@@ -519,40 +534,102 @@ TSharedPtr<FJsonObject> FUnrealMCPBlueprintNodeCommands::HandleAddFunctionCallNo
     UClass* TargetClass = nullptr;
         
     // First try without a prefix
-    TargetClass = FindObject<UClass>(ANY_PACKAGE, *TargetClassName);
-    UE_LOG(LogTemp, Display, TEXT("Tried to find class '%s': %s"), 
-           *TargetClassName, TargetClass ? TEXT("Found") : TEXT("Not found"));
+    TargetClass = FindFirstObjectSafe<UClass>(*TargetClassName);
+    UE_LOG(LogTemp, Display, TEXT("Tried to find class '%s': %s"), *TargetClassName, TargetClass ? TEXT("Found") : TEXT("Not found"));
         
     // If not found, try with U prefix (common convention for UE classes)
     if (!TargetClass && !TargetClassName.StartsWith(TEXT("U")))
     {
         FString TargetWithPrefix = FString(TEXT("U")) + TargetClassName;
-        TargetClass = FindObject<UClass>(ANY_PACKAGE, *TargetWithPrefix);
-        UE_LOG(LogTemp, Display, TEXT("Tried to find class '%s': %s"), 
-               *TargetWithPrefix, TargetClass ? TEXT("Found") : TEXT("Not found"));
+        TargetClass = FindFirstObjectSafe<UClass>(*TargetWithPrefix);
+        UE_LOG(LogTemp, Display, TEXT("Tried to find class '%s': %s"), *TargetWithPrefix, TargetClass ? TEXT("Found") : TEXT("Not found"));
     }
     // Special case handling for common classes like UGameplayStatics
     if (!TargetClass)
     {
-        if (TargetClassName == TEXT("UKismetSystemLibrary"))
-        {
-            TargetClass = UKismetSystemLibrary::StaticClass();
-        }
-        else if (TargetClassName == TEXT("UGameplayStatics"))
+        if (TargetClassName == TEXT("UGameplayStatics"))
         {
             TargetClass = UGameplayStatics::StaticClass();
         }
-        else if (TargetClassName == TEXT("UKismetStringLibrary"))
+        else if (TargetClassName == TEXT("UImportanceSamplingLibrary"))
         {
-            TargetClass = UKismetStringLibrary::StaticClass();
+            TargetClass = UImportanceSamplingLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UBlueprintInstancedStructLibrary"))
+        {
+            TargetClass = UBlueprintInstancedStructLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UBlueprintMapLibrary"))
+        {
+            TargetClass = UBlueprintMapLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UBlueprintPathsLibrary"))
+        {
+            TargetClass = UBlueprintPathsLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UBlueprintPlatformLibrary"))
+        {
+            TargetClass = UBlueprintPlatformLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UBlueprintSetLibrary"))
+        {
+            TargetClass = UBlueprintSetLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UDataTableFunctionLibrary"))
+        {
+            TargetClass = UDataTableFunctionLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UKismetArrayLibrary"))
+        {
+            TargetClass = UKismetArrayLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UKismetGuidLibrary"))
+        {
+            TargetClass = UKismetGuidLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UKismetInputLibrary"))
+        {
+            TargetClass = UKismetInputLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UKismetInternationalizationLibrary"))
+        {
+            TargetClass = UKismetInternationalizationLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UKismetMaterialLibrary"))
+        {
+            TargetClass = UKismetMaterialLibrary::StaticClass();
         }
         else if (TargetClassName == TEXT("UKismetMathLibrary"))
         {
             TargetClass = UKismetMathLibrary::StaticClass();
         }
-        else if (TargetClassName == TEXT("UKismetArrayLibrary"))
+        else if (TargetClassName == TEXT("UKismetNodeHelperLibrary"))
         {
-            TargetClass = UKismetArrayLibrary::StaticClass();
+            TargetClass = UKismetNodeHelperLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UKismetRenderingLibrary"))
+        {
+            TargetClass = UKismetRenderingLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UKismetStringLibrary"))
+        {
+            TargetClass = UKismetStringLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UKismetStringTableLibrary"))
+        {
+            TargetClass = UKismetStringTableLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UKismetSystemLibrary"))
+        {
+            TargetClass = UKismetSystemLibrary::StaticClass();
+        }
+        else if (TargetClassName == TEXT("UKismetTextLibrary"))
+        {
+            TargetClass = UKismetTextLibrary::StaticClass();
+        }
+        else
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Failed to find target class %s"), *TargetClassName);
         }
     }
     
